@@ -138,6 +138,9 @@ async function parseOMPDF(file) {
 }
 
 function extractOMData(fullText, pageTexts) {
+    // Log for debugging
+    console.log('Extracting data from OM, text length:', fullText.length);
+
     const data = {
         propertyName: '',
         address: '',
@@ -147,18 +150,27 @@ function extractOMData(fullText, pageTexts) {
         county: '',
         propertyType: 'Multifamily',
         yearBuilt: '',
+        yearRenovated: '',
         numUnits: '',
         buildingSize: '',
         lotSize: '',
         parcelId: '',
         constructionType: '',
+        parking: '',
+        utilities: '',
         zoning: '',
         occupancy: '',
         unitMix: [],
         financials: {},
         marketData: {},
         comps: [],
-        rentComps: []
+        rentComps: [],
+        // Broker info
+        brokerName: '',
+        brokerPhone: '',
+        brokerEmail: '',
+        brokerageFirm: '',
+        brokerLicense: ''
     };
 
     // Extract property name (usually in first few pages)
@@ -270,7 +282,81 @@ function extractOMData(fullText, pageTexts) {
     // Extract rent comps
     data.rentComps = extractRentComps(fullText);
 
+    // Extract broker/contact information
+    extractBrokerInfo(fullText, data);
+
+    // Extract parking info
+    const parkingMatch = fullText.match(/Parking[:\s]+([^\n]+)/i) ||
+                         fullText.match(/(\d+)\s*(?:parking\s*)?spaces?/i);
+    if (parkingMatch) {
+        data.parking = parkingMatch[1] ? parkingMatch[1].trim() : parkingMatch[0].trim();
+    }
+
+    // Extract utilities info
+    const utilMatch = fullText.match(/Utilities[:\s]+([^\n]+)/i);
+    if (utilMatch) {
+        data.utilities = utilMatch[1].trim();
+    }
+
+    // Extract year renovated
+    const renoMatch = fullText.match(/(?:Year\s*)?Renovated[:\s]+(\d{4})/i) ||
+                      fullText.match(/Renovation[:\s]+(\d{4})/i);
+    if (renoMatch) {
+        data.yearRenovated = renoMatch[1];
+    }
+
+    console.log('Extracted data:', data);
     return data;
+}
+
+function extractBrokerInfo(text, data) {
+    // Look for broker/advisor names - typically "FirstName LastName" followed by title
+    const brokerPatterns = [
+        /(?:Listed by|Contact|Advisor|Broker)[:\s]*([A-Z][a-z]+\s+[A-Z][a-z]+)/i,
+        /([A-Z][a-z]+\s+[A-Z][a-z]+)\s*(?:Senior|Vice|Director|Managing|Principal|Associate)/i,
+        /([A-Z][a-z]+\s+[A-Z][a-z]+)\s*\n\s*(?:Senior|Vice|Director|Managing)/i
+    ];
+
+    for (const pattern of brokerPatterns) {
+        const match = text.match(pattern);
+        if (match && match[1]) {
+            data.brokerName = match[1].trim();
+            break;
+        }
+    }
+
+    // Extract phone number
+    const phoneMatch = text.match(/(?:Phone|Tel|Mobile|Direct|O|M|D)[:\s]*\(?(\d{3})\)?[\s.-]?(\d{3})[\s.-]?(\d{4})/i) ||
+                       text.match(/\(?(\d{3})\)?[\s.-](\d{3})[\s.-](\d{4})/);
+    if (phoneMatch) {
+        data.brokerPhone = `(${phoneMatch[1]}) ${phoneMatch[2]}-${phoneMatch[3]}`;
+    }
+
+    // Extract email
+    const emailMatch = text.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+    if (emailMatch) {
+        data.brokerEmail = emailMatch[1].toLowerCase();
+    }
+
+    // Extract brokerage firm - look for common patterns
+    const firmPatterns = [
+        /(?:Marcus\s*&?\s*Millichap|CBRE|JLL|Cushman\s*&?\s*Wakefield|Berkadia|Walker\s*&?\s*Dunlop|Newmark|Colliers|Northmarq|Matthews)/i,
+        /(?:Real Estate|Realty|Advisors|Capital|Partners|Group|Properties)\s*(?:LLC|Inc|LP|Corp)?/i
+    ];
+
+    for (const pattern of firmPatterns) {
+        const match = text.match(pattern);
+        if (match) {
+            data.brokerageFirm = match[0].trim();
+            break;
+        }
+    }
+
+    // Extract license number
+    const licenseMatch = text.match(/(?:License|Lic)[:\s#]*([A-Z]{0,2}\d{5,10})/i);
+    if (licenseMatch) {
+        data.brokerLicense = licenseMatch[1];
+    }
 }
 
 function extractUnitMix(text) {
@@ -691,10 +777,10 @@ function populateFormFromOM(data) {
     document.getElementById('buildingSize').value = data.buildingSize || '';
     document.getElementById('numUnits').value = data.numUnits || '';
     document.getElementById('occupancyRate').value = data.occupancy || '95';
-    document.getElementById('constructionType').value = data.constructionType || 'Wood Frame';
-    document.getElementById('parking').value = data.parking || 'Surface Lot';
-    document.getElementById('utilities').value = data.utilities || 'Tenant Paid Electric, Owner Paid Water/Sewer';
-    document.getElementById('zoning').value = data.zoning || 'Multifamily Residential';
+    document.getElementById('constructionType').value = data.constructionType || 'Wood Frame with Stucco';
+    document.getElementById('parking').value = data.parking || `${numUnits * 1.5} Surface Spaces (1.5 per unit)`;
+    document.getElementById('utilities').value = data.utilities || 'Electric: Tenant Paid | Water/Sewer: Owner Paid | Gas: N/A';
+    document.getElementById('zoning').value = data.zoning || 'RM - Multifamily Residential';
 
     // === SECTION 2: Unit Mix ===
     if (data.unitMix && data.unitMix.length > 0) {
@@ -764,13 +850,13 @@ function populateFormFromOM(data) {
     document.getElementById('sellerTimeline').value = data.sellerTimeline || '60-90 days';
     document.getElementById('pricingExpectation').value = data.pricingExpectation || 'Market Value';
     document.getElementById('dealStructure').value = data.dealStructure || 'All Cash or New Financing';
-    document.getElementById('brokerName').value = data.brokerName || '';
+    document.getElementById('brokerName').value = data.brokerName || 'Andrew Rentz';
     document.getElementById('brokerLicense').value = data.brokerLicense || '';
-    document.getElementById('brokerageFirm').value = data.brokerageFirm || '';
+    document.getElementById('brokerageFirm').value = data.brokerageFirm || 'Rentz Commercial Real Estate';
     document.getElementById('brokerageAddress').value = data.brokerageAddress || '';
-    document.getElementById('clientName').value = data.clientName || '';
+    document.getElementById('clientName').value = data.clientName || 'Property Owner';
     document.getElementById('brokerBio').value = data.brokerBio ||
-        'Licensed real estate professional specializing in multifamily investment properties with extensive experience in the local market.';
+        'Andrew Rentz is a licensed commercial real estate professional specializing in multifamily investment properties. With extensive experience in the local market, Andrew provides expert guidance on property valuation, marketing, and transaction execution for clients seeking to maximize value in the multifamily sector.';
 
     // === SECTION 10: Valuation Parameters ===
     document.getElementById('appliedCapRate').value = data.appliedCapRate || '5.50';
