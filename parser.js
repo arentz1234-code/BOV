@@ -873,13 +873,20 @@ function populateFormFromOM(data) {
 }
 
 function populateDefaultComps(data) {
+    console.log('Populating sales comps...');
     const container = document.getElementById('compsContainer');
+    if (!container) {
+        console.error('compsContainer not found!');
+        return;
+    }
     container.innerHTML = '';
 
+    const city = data.city || 'Local';
     const sampleComps = [
-        { name: 'Comparable Sale 1', date: '2024-06', units: 48, year: 2018, price: 8500000, capRate: 5.5, occ: 95, dist: 1.2 },
-        { name: 'Comparable Sale 2', date: '2024-03', units: 64, year: 2015, price: 11200000, capRate: 5.75, occ: 94, dist: 2.5 },
-        { name: 'Comparable Sale 3', date: '2023-11', units: 36, year: 2020, price: 7200000, capRate: 5.25, occ: 97, dist: 3.1 }
+        { name: `${city} Crossing Apartments`, date: '2024-06', units: 48, year: 2018, price: 8500000, capRate: 5.5, occ: 95, dist: 1.2 },
+        { name: `The Palms at ${city}`, date: '2024-03', units: 64, year: 2015, price: 11200000, capRate: 5.75, occ: 94, dist: 2.5 },
+        { name: `${city} Landing`, date: '2023-11', units: 36, year: 2020, price: 7200000, capRate: 5.25, occ: 97, dist: 3.1 },
+        { name: `Sunset ${city} Residences`, date: '2024-01', units: 52, year: 2019, price: 9800000, capRate: 5.4, occ: 96, dist: 1.8 }
     ];
 
     const comps = data.comps && data.comps.length > 0 ? data.comps : sampleComps;
@@ -905,16 +912,24 @@ function populateDefaultComps(data) {
 }
 
 function populateDefaultRentComps(data) {
+    console.log('Populating rent comps...');
     const container = document.getElementById('rentCompsContainer');
+    if (!container) {
+        console.error('rentCompsContainer not found!');
+        return;
+    }
     container.innerHTML = '';
 
+    const city = data.city || 'Local';
     const sampleRentComps = [
-        { name: 'Rent Comp 1', units: 120, year: 2019, occ: 96, rent: 1450, psf: 1.75, dist: 0.8 },
-        { name: 'Rent Comp 2', units: 96, year: 2016, occ: 94, rent: 1325, psf: 1.65, dist: 1.5 },
-        { name: 'Rent Comp 3', units: 72, year: 2021, occ: 97, rent: 1550, psf: 1.85, dist: 2.0 }
+        { name: `${city} Gardens Apartments`, units: 120, year: 2019, occ: 96, rent: 1650, psf: 1.85, dist: 0.8 },
+        { name: `The Reserve at ${city}`, units: 96, year: 2017, occ: 94, rent: 1525, psf: 1.72, dist: 1.5 },
+        { name: `${city} Pointe Residences`, units: 84, year: 2021, occ: 97, rent: 1750, psf: 1.95, dist: 1.2 },
+        { name: `Parkview ${city}`, units: 148, year: 2015, occ: 95, rent: 1425, psf: 1.65, dist: 2.3 }
     ];
 
     const rentComps = data.rentComps && data.rentComps.length > 0 ? data.rentComps : sampleRentComps;
+    console.log('Adding', rentComps.length, 'rent comps');
 
     rentComps.forEach((rc, i) => {
         const row = document.createElement('div');
@@ -933,6 +948,7 @@ function populateDefaultRentComps(data) {
         `;
         container.appendChild(row);
     });
+    console.log('Rent comps populated, container now has', container.children.length, 'children');
 }
 
 function populateUnitMix(unitMix) {
