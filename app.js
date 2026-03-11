@@ -1123,6 +1123,17 @@ Proven rent growth in submarket with 4.2% YoY increases`;
 
 // Load AZUL Property Data (from Offering Memorandum)
 function loadAzulData() {
+    // Set property photo from official website
+    const azulPhotoUrl = 'https://images.myrazz.com/uc-image/44e771ce-d422-4ac9-89af-ba2017754e26/-/scale_crop/1200x630/smart/-/format/webp/-/quality/lighter/Azul%20Luxury%20Residences.jpeg.webp';
+    propertyPhotoData = azulPhotoUrl;
+    const preview = document.getElementById('photoPreview');
+    if (preview) {
+        preview.src = azulPhotoUrl;
+        preview.style.display = 'block';
+    }
+    document.getElementById('photoUploadZone').classList.add('has-file');
+    document.getElementById('photoStatus').innerHTML = '<span class="success">AZUL property photo loaded</span>';
+
     // Property Info
     document.getElementById('propertyName').value = 'AZUL';
     document.getElementById('propertyAddress').value = '201 Southwest Joan Jefferson Way';

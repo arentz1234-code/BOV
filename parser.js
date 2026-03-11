@@ -1789,7 +1789,7 @@ function populateFormFromRentRoll(data) {
     const isAzul = propertyName.toLowerCase().includes('azul') ||
                    (numUnits >= 48 && numUnits <= 50);
 
-    // If AZUL detected, use known correct unit mix data
+    // If AZUL detected, use known correct unit mix data and photo
     if (isAzul) {
         console.log('AZUL property detected - using verified unit mix data');
         const azulUnitMix = [
@@ -1802,6 +1802,21 @@ function populateFormFromRentRoll(data) {
             { type: '3BR/2BA', count: 4, sf: 1596, currentRent: 3317, marketRent: 3295 }
         ];
         populateUnitMix(azulUnitMix);
+
+        // Load AZUL property photo
+        const azulPhotoUrl = 'https://images.myrazz.com/uc-image/44e771ce-d422-4ac9-89af-ba2017754e26/-/scale_crop/1200x630/smart/-/format/webp/-/quality/lighter/Azul%20Luxury%20Residences.jpeg.webp';
+        if (typeof propertyPhotoData !== 'undefined') {
+            propertyPhotoData = azulPhotoUrl;
+        }
+        const preview = document.getElementById('photoPreview');
+        if (preview) {
+            preview.src = azulPhotoUrl;
+            preview.style.display = 'block';
+        }
+        const photoZone = document.getElementById('photoUploadZone');
+        if (photoZone) photoZone.classList.add('has-file');
+        const photoStatus = document.getElementById('photoStatus');
+        if (photoStatus) photoStatus.innerHTML = '<span class="success">AZUL photo loaded</span>';
 
         // Update summary fields
         document.getElementById('numUnits').value = '49';
