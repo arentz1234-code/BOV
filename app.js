@@ -57,6 +57,34 @@ function switchTab(tabId) {
     document.getElementById(tabId).classList.add('active');
 }
 
+// Format currency with dollar sign and commas
+function formatCurrency(input) {
+    // Remove all non-digit characters
+    let value = input.value.replace(/[^0-9]/g, '');
+
+    if (value === '') {
+        input.value = '';
+        return;
+    }
+
+    // Convert to number and format with commas
+    const number = parseInt(value, 10);
+    input.value = '$' + number.toLocaleString('en-US');
+}
+
+// Parse currency string to number (removes $ and commas)
+function parseCurrency(value) {
+    if (!value) return 0;
+    return parseInt(value.replace(/[$,]/g, ''), 10) || 0;
+}
+
+// Auto-update average row when unit values change
+document.getElementById('unitMixContainer').addEventListener('input', (e) => {
+    if (e.target.closest('.unit-row:not(.average-row)')) {
+        updateAverageRow();
+    }
+});
+
 // Unit Mix Management
 let compCount = 1;
 
@@ -65,21 +93,82 @@ function addUnitRow() {
     const row = document.createElement('div');
     row.className = 'unit-row';
     row.innerHTML = `
-        <input type="text" placeholder="Unit Type (e.g., 1BR/1BA)" class="unitType">
-        <input type="number" placeholder="# Units" class="unitCount">
-        <input type="number" placeholder="Avg SF" class="unitSF">
-        <input type="number" placeholder="Current Rent $" class="currentRent">
-        <input type="number" placeholder="Market Rent $" class="marketRent">
+        <input type="text" placeholder="e.g., 1BR/1BA" class="unitType">
+        <input type="number" placeholder="0" class="unitCount">
+        <input type="number" placeholder="0" class="unitSF">
+        <input type="text" placeholder="$0" class="currentRent" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
+        <input type="text" placeholder="$0" class="marketRent" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
         <button type="button" class="remove-unit-btn" onclick="removeUnitRow(this)">×</button>
     `;
-    container.appendChild(row);
+
+    // Insert before average row if it exists
+    const avgRow = container.querySelector('.average-row');
+    if (avgRow) {
+        container.insertBefore(row, avgRow);
+    } else {
+        container.appendChild(row);
+    }
+
+    // Recalculate average
+    updateAverageRow();
 }
 
 function removeUnitRow(btn) {
     const container = document.getElementById('unitMixContainer');
-    if (container.children.length > 1) {
+    const unitRows = container.querySelectorAll('.unit-row:not(.average-row)');
+    if (unitRows.length > 1) {
         btn.parentElement.remove();
+        // Recalculate average
+        updateAverageRow();
     }
+}
+
+function updateAverageRow() {
+    const container = document.getElementById('unitMixContainer');
+    const unitRows = container.querySelectorAll('.unit-row:not(.average-row)');
+
+    // Calculate totals and weighted averages
+    let totalUnits = 0;
+    let totalSF = 0;
+    let totalCurrentRent = 0;
+    let totalMarketRent = 0;
+
+    unitRows.forEach(row => {
+        const count = parseInt(row.querySelector('.unitCount').value) || 0;
+        const sf = parseInt(row.querySelector('.unitSF').value) || 0;
+        const currentRent = parseCurrency(row.querySelector('.currentRent').value);
+        const marketRent = parseCurrency(row.querySelector('.marketRent').value);
+
+        totalUnits += count;
+        totalSF += sf * count;
+        totalCurrentRent += currentRent * count;
+        totalMarketRent += marketRent * count;
+    });
+
+    const avgSF = totalUnits > 0 ? Math.round(totalSF / totalUnits) : 0;
+    const avgCurrentRent = totalUnits > 0 ? Math.round(totalCurrentRent / totalUnits) : 0;
+    const avgMarketRent = totalUnits > 0 ? Math.round(totalMarketRent / totalUnits) : 0;
+
+    // Format currency values
+    const formattedCurrentRent = '$' + avgCurrentRent.toLocaleString('en-US');
+    const formattedMarketRent = '$' + avgMarketRent.toLocaleString('en-US');
+
+    // Find or create average row
+    let avgRow = container.querySelector('.average-row');
+    if (!avgRow) {
+        avgRow = document.createElement('div');
+        avgRow.className = 'unit-row average-row';
+        container.appendChild(avgRow);
+    }
+
+    avgRow.innerHTML = `
+        <input type="text" class="unitType" value="AVERAGE" readonly style="font-weight: bold; background: linear-gradient(135deg, #e6f0ff, #f0f4f8); border: 2px solid #2563eb;">
+        <input type="number" class="unitCount" value="${totalUnits}" readonly style="font-weight: bold; background: linear-gradient(135deg, #e6f0ff, #f0f4f8); border: 2px solid #2563eb; text-align: center;">
+        <input type="number" class="unitSF" value="${avgSF}" readonly style="font-weight: bold; background: linear-gradient(135deg, #e6f0ff, #f0f4f8); border: 2px solid #2563eb; text-align: center;">
+        <input type="text" class="currentRent" value="${formattedCurrentRent}" readonly style="font-weight: bold; background: linear-gradient(135deg, #e6f0ff, #f0f4f8); border: 2px solid #2563eb; text-align: right; font-family: 'Courier New', monospace;">
+        <input type="text" class="marketRent" value="${formattedMarketRent}" readonly style="font-weight: bold; background: linear-gradient(135deg, #e6f0ff, #f0f4f8); border: 2px solid #2563eb; text-align: right; font-family: 'Courier New', monospace;">
+        <div style="width: 36px;"></div>
+    `;
 }
 
 // Comparable Sales Management
@@ -91,14 +180,14 @@ function addCompRow() {
     row.innerHTML = `
         <div class="comp-header">Comparable #${compCount} <button type="button" class="remove-unit-btn" onclick="removeCompRow(this)" style="float:right;width:28px;height:28px;font-size:1rem;">×</button></div>
         <div class="comp-grid">
-            <input type="text" placeholder="Property Name/Address" class="compName">
-            <input type="date" placeholder="Sale Date" class="compDate">
+            <input type="text" placeholder="Property Name" class="compName">
+            <input type="month" placeholder="Sale Date" class="compDate">
             <input type="number" placeholder="Units" class="compUnits">
-            <input type="number" placeholder="Year Built" class="compYearBuilt">
-            <input type="number" placeholder="Sale Price $" class="compPrice">
-            <input type="number" placeholder="Cap Rate %" step="0.01" class="compCapRate">
-            <input type="number" placeholder="Occupancy %" class="compOccupancy">
-            <input type="number" placeholder="Distance (mi)" step="0.1" class="compDistance">
+            <input type="number" placeholder="Year" class="compYearBuilt">
+            <input type="text" placeholder="$0" class="compPrice" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
+            <input type="number" placeholder="0.00" step="0.01" class="compCapRate">
+            <input type="number" placeholder="%" class="compOccupancy">
+            <input type="number" placeholder="mi" step="0.1" class="compDistance">
         </div>
     `;
     container.appendChild(row);
@@ -127,11 +216,11 @@ function addRentCompRow() {
         <div class="rent-comp-grid">
             <input type="text" placeholder="Property Name" class="rentCompName">
             <input type="number" placeholder="Units" class="rentCompUnits">
-            <input type="number" placeholder="Year Built" class="rentCompYearBuilt">
-            <input type="number" placeholder="Occupancy %" class="rentCompOccupancy">
-            <input type="number" placeholder="Avg Rent $" class="rentCompAvgRent">
+            <input type="number" placeholder="Year" class="rentCompYearBuilt">
+            <input type="number" placeholder="%" class="rentCompOccupancy">
+            <input type="text" placeholder="$0" class="rentCompAvgRent" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
             <input type="number" placeholder="$/SF" step="0.01" class="rentCompPSF">
-            <input type="number" placeholder="Distance (mi)" step="0.1" class="rentCompDistance">
+            <input type="number" placeholder="mi" step="0.1" class="rentCompDistance">
         </div>
     `;
     container.appendChild(row);
@@ -197,15 +286,15 @@ function getNumericValue(id, defaultVal = 0) {
     return isNaN(val) ? defaultVal : val;
 }
 
-// Collect unit mix data
+// Collect unit mix data (excluding the average row)
 function getUnitMixData() {
     const units = [];
-    document.querySelectorAll('.unit-row').forEach(row => {
+    document.querySelectorAll('.unit-row:not(.average-row)').forEach(row => {
         const type = row.querySelector('.unitType').value;
         const count = parseInt(row.querySelector('.unitCount').value) || 0;
         const sf = parseInt(row.querySelector('.unitSF').value) || 0;
-        const currentRent = parseFloat(row.querySelector('.currentRent').value) || 0;
-        const marketRent = parseFloat(row.querySelector('.marketRent').value) || 0;
+        const currentRent = parseCurrency(row.querySelector('.currentRent').value);
+        const marketRent = parseCurrency(row.querySelector('.marketRent').value);
 
         if (type && count > 0) {
             units.push({ type, count, sf, currentRent, marketRent });
@@ -222,7 +311,7 @@ function getCompsData() {
         const date = row.querySelector('.compDate').value;
         const units = parseInt(row.querySelector('.compUnits').value) || 0;
         const yearBuilt = row.querySelector('.compYearBuilt').value;
-        const price = parseFloat(row.querySelector('.compPrice').value) || 0;
+        const price = parseCurrency(row.querySelector('.compPrice').value);
         const capRate = parseFloat(row.querySelector('.compCapRate').value) || 0;
         const occupancy = parseFloat(row.querySelector('.compOccupancy').value) || 0;
         const distance = parseFloat(row.querySelector('.compDistance').value) || 0;
@@ -232,6 +321,25 @@ function getCompsData() {
         }
     });
     return comps;
+}
+
+// Collect rent comparable data
+function getRentCompsData() {
+    const rentComps = [];
+    document.querySelectorAll('.rent-comp-row').forEach(row => {
+        const name = row.querySelector('.rentCompName').value;
+        const units = parseInt(row.querySelector('.rentCompUnits').value) || 0;
+        const yearBuilt = row.querySelector('.rentCompYearBuilt').value;
+        const occupancy = parseFloat(row.querySelector('.rentCompOccupancy').value) || 0;
+        const avgRent = parseCurrency(row.querySelector('.rentCompAvgRent').value);
+        const psf = parseFloat(row.querySelector('.rentCompPSF').value) || 0;
+        const distance = parseFloat(row.querySelector('.rentCompDistance').value) || 0;
+
+        if (name && avgRent > 0) {
+            rentComps.push({ name, units, yearBuilt, occupancy, avgRent, psf, distance });
+        }
+    });
+    return rentComps;
 }
 
 // Generate BOV Document
@@ -850,24 +958,33 @@ function loadSampleData() {
     unitContainer.innerHTML = '';
 
     const unitData = [
-        { type: '1BR/1BA', count: 24, sf: 650, current: 1150, market: 1295 },
-        { type: '2BR/1BA', count: 28, sf: 850, current: 1350, market: 1495 },
-        { type: '2BR/2BA', count: 12, sf: 950, current: 1450, market: 1595 }
+        { type: '1BR/1BA', count: 10, sf: 800, current: 2100, market: 2225 },
+        { type: '2BR/1BA (A)', count: 3, sf: 1050, current: 2650, market: 2795 },
+        { type: '2BR/1BA (B)', count: 3, sf: 1080, current: 2525, market: 2650 },
+        { type: '2BR/2BA (A)', count: 30, sf: 1175, current: 2850, market: 3025 },
+        { type: '2BR/2BA (B)', count: 12, sf: 1300, current: 3025, market: 3200 },
+        { type: '2BR/2BA (C)', count: 2, sf: 1375, current: 2975, market: 3125 },
+        { type: '3BR/2BA', count: 4, sf: 1550, current: 3450, market: 3650 }
     ];
 
     unitData.forEach(u => {
         const row = document.createElement('div');
         row.className = 'unit-row';
+        const formattedCurrent = '$' + u.current.toLocaleString('en-US');
+        const formattedMarket = '$' + u.market.toLocaleString('en-US');
         row.innerHTML = `
-            <input type="text" placeholder="Unit Type" class="unitType" value="${u.type}">
-            <input type="number" placeholder="# Units" class="unitCount" value="${u.count}">
-            <input type="number" placeholder="Avg SF" class="unitSF" value="${u.sf}">
-            <input type="number" placeholder="Current Rent $" class="currentRent" value="${u.current}">
-            <input type="number" placeholder="Market Rent $" class="marketRent" value="${u.market}">
+            <input type="text" placeholder="e.g., 1BR/1BA" class="unitType" value="${u.type}">
+            <input type="number" placeholder="0" class="unitCount" value="${u.count}">
+            <input type="number" placeholder="0" class="unitSF" value="${u.sf}">
+            <input type="text" placeholder="$0" class="currentRent" value="${formattedCurrent}" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
+            <input type="text" placeholder="$0" class="marketRent" value="${formattedMarket}" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
             <button type="button" class="remove-unit-btn" onclick="removeUnitRow(this)">×</button>
         `;
         unitContainer.appendChild(row);
     });
+
+    // Add average row
+    updateAverageRow();
 
     // Income & Expenses
     document.getElementById('otherIncome').value = '38400';
@@ -1043,32 +1160,37 @@ function loadAzulData() {
     unitData.forEach(u => {
         const row = document.createElement('div');
         row.className = 'unit-row';
+        const formattedCurrent = '$' + u.current.toLocaleString('en-US');
+        const formattedMarket = '$' + u.market.toLocaleString('en-US');
         row.innerHTML = `
-            <input type="text" placeholder="Unit Type" class="unitType" value="${u.type}">
-            <input type="number" placeholder="# Units" class="unitCount" value="${u.count}">
-            <input type="number" placeholder="Avg SF" class="unitSF" value="${u.sf}">
-            <input type="number" placeholder="Current Rent $" class="currentRent" value="${u.current}">
-            <input type="number" placeholder="Market Rent $" class="marketRent" value="${u.market}">
+            <input type="text" placeholder="e.g., 1BR/1BA" class="unitType" value="${u.type}">
+            <input type="number" placeholder="0" class="unitCount" value="${u.count}">
+            <input type="number" placeholder="0" class="unitSF" value="${u.sf}">
+            <input type="text" placeholder="$0" class="currentRent" value="${formattedCurrent}" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
+            <input type="text" placeholder="$0" class="marketRent" value="${formattedMarket}" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
             <button type="button" class="remove-unit-btn" onclick="removeUnitRow(this)">×</button>
         `;
         unitContainer.appendChild(row);
     });
 
-    // Income & Expenses (T12 Data from OM Pages 50-51)
-    // Other Income T12: $178,843 (app fees, late fees, pet fees, garage, parking, storage, utility income, etc.)
-    document.getElementById('otherIncome').value = '178843';
-    // Physical Vacancy was 6.99% but takeover assumes 4%
-    document.getElementById('vacancyRate').value = '6';
-    // Real Estate Taxes FY2025: $154,921 + RE Tax Reassessment: $32,873 = $187,794
-    document.getElementById('realEstateTaxes').value = '187794';
-    // Insurance T12: $140,858 (Takeover estimate: $109,571)
-    document.getElementById('insurance').value = '109571';
+    // Add average row
+    updateAverageRow();
+
+    // Income & Expenses (Actual T12 from Excel - December 2025)
+    // Other Income from T12: $1,554,803 Total Revenue - $1,540,760 GPR = $14,043
+    document.getElementById('otherIncome').value = '14043';
+    // Physical Vacancy: 2 vacant units (203, 222) out of 49 = 4.08%
+    document.getElementById('vacancyRate').value = '4';
+    // Real Estate Taxes T12 Actual: $167,788
+    document.getElementById('realEstateTaxes').value = '167788';
+    // Insurance T12 Actual: $129,979
+    document.getElementById('insurance').value = '129979';
     // Management Fee: 3.5% of EGI
     document.getElementById('managementFeePercent').value = '3.5';
     // Repairs & Maintenance T12: $10,571 + Turnover: $8,627 = $19,198
     document.getElementById('repairsMaintenance').value = '19198';
-    // Utilities (owner-paid): Electric $21,248 + Water/Sewer $57,401 + Trash $20,079 + Cable $32,385 + Other $1,917 = $133,030
-    document.getElementById('utilitiesExpense').value = '133030';
+    // Utilities T12 Actual: $133,031 (Electric, Water/Sewer, Trash, Cable, Other)
+    document.getElementById('utilitiesExpense').value = '133031';
     // Other Expenses: Payroll $73,500 + Contract Services $22,393 + G&A $9,800 + Marketing $9,800 + Land Lease $48,000 = $163,493
     document.getElementById('otherExpenses').value = '163493';
     // Reserves: $250/unit
@@ -1170,18 +1292,18 @@ Average occupancy across the competitive set is 95%, supporting the subject's cu
     document.getElementById('hasAssumableDebt').checked = false;
     toggleDebtSection();
 
-    // Seller & Broker (Marcus & Millichap team from OM Pages 3, 54)
+    // Seller & Broker (Listing info from Marcus & Millichap OM Pages 3, 54)
     document.getElementById('sellerTimeline').value = 'Market-bid basis with flexible timing; seller will respond to offers as received';
     document.getElementById('pricingExpectation').value = 'TBD by Market - Offers solicited on market-bid basis';
-    document.getElementById('dealStructure').value = 'Fee simple interest subject to land lease with City of Stuart; offered free and clear of debt';
-    document.getElementById('brokerName').value = 'Ned Roberts, CCIM & Jason Hague';
-    document.getElementById('brokerLicense').value = 'FL Broker of Record: Ryan Nee (BK3154667)';
-    document.getElementById('brokerageFirm').value = 'Marcus & Millichap Real Estate Investment Services of Florida, Inc.';
-    document.getElementById('brokerageAddress').value = 'Tampa Office; (813) 387-4721 / (203) 494-0560';
+    document.getElementById('dealStructure').value = 'Fee simple interest subject to land lease with City of Stuart; offered free and clear of debt. Listing Broker: Ned Roberts, CCIM & Jason Hague, Marcus & Millichap (Tampa Office)';
+    document.getElementById('brokerName').value = '';  // Leave blank for user to fill in
+    document.getElementById('brokerLicense').value = '';  // Leave blank for user to fill in
+    document.getElementById('brokerageFirm').value = '';  // Leave blank for user to fill in
+    document.getElementById('brokerageAddress').value = '';  // Leave blank for user to fill in
     document.getElementById('clientName').value = '[Property Owner]';
-    document.getElementById('brokerBio').value = 'Ned Roberts, CCIM is a Managing Director Investments with Marcus & Millichap\'s Tampa office, specializing in multifamily investment sales throughout Florida\'s Treasure Coast and Tampa Bay regions. Jason Hague is a Managing Director Investments with extensive experience in institutional-quality multifamily transactions. The team is supported by Financial Analyst Michael Clennan. Marcus & Millichap is the leading national brokerage firm specializing in investment real estate.';
+    document.getElementById('brokerBio').value = '';  // Leave blank for user to fill in
 
-    // Valuation - based on T12 NOI of $762,148 and Takeover NOI of $945,403
+    // Valuation - based on Actual T12 NOI of $794,404 (GPR $1,540,760, OpEx $760,399)
     document.getElementById('appliedCapRate').value = '5.50';
     document.getElementById('stabilizedCapRate').value = '5.25';
     document.getElementById('valueLowAdj').value = '-5';

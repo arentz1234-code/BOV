@@ -207,13 +207,21 @@
                 <!-- Section 2: Unit Mix -->
                 <section class="form-section">
                     <h2>Unit Mix & Rent Roll</h2>
+                    <div class="unit-mix-labels">
+                        <span>Unit Type</span>
+                        <span># Units</span>
+                        <span>Avg SF</span>
+                        <span>Current Rent</span>
+                        <span>Market Rent</span>
+                        <span></span>
+                    </div>
                     <div id="unitMixContainer">
                         <div class="unit-row">
-                            <input type="text" placeholder="Unit Type (e.g., 1BR/1BA)" class="unitType">
-                            <input type="number" placeholder="# Units" class="unitCount">
-                            <input type="number" placeholder="Avg SF" class="unitSF">
-                            <input type="number" placeholder="Current Rent $" class="currentRent">
-                            <input type="number" placeholder="Market Rent $" class="marketRent">
+                            <input type="text" placeholder="e.g., 1BR/1BA" class="unitType">
+                            <input type="number" placeholder="0" class="unitCount">
+                            <input type="number" placeholder="0" class="unitSF">
+                            <input type="text" placeholder="$0" class="currentRent" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
+                            <input type="text" placeholder="$0" class="marketRent" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
                             <button type="button" class="remove-unit-btn" onclick="removeUnitRow(this)">×</button>
                         </div>
                     </div>
@@ -360,18 +368,29 @@
                 <!-- Section 6: Comparable Sales -->
                 <section class="form-section">
                     <h2>Comparable Sales</h2>
+                    <div class="comp-labels">
+                        <span>Property Name</span>
+                        <span>Sale Date</span>
+                        <span>Units</span>
+                        <span>Year Built</span>
+                        <span>Sale Price</span>
+                        <span>Cap Rate %</span>
+                        <span>Occupancy %</span>
+                        <span>Distance (mi)</span>
+                        <span></span>
+                    </div>
                     <div id="compsContainer">
                         <div class="comp-row">
                             <div class="comp-header">Comparable #1</div>
                             <div class="comp-grid">
-                                <input type="text" placeholder="Property Name/Address" class="compName">
-                                <input type="date" placeholder="Sale Date" class="compDate">
+                                <input type="text" placeholder="Property Name" class="compName">
+                                <input type="month" placeholder="Sale Date" class="compDate">
                                 <input type="number" placeholder="Units" class="compUnits">
-                                <input type="number" placeholder="Year Built" class="compYearBuilt">
-                                <input type="number" placeholder="Sale Price $" class="compPrice">
-                                <input type="number" placeholder="Cap Rate %" step="0.01" class="compCapRate">
-                                <input type="number" placeholder="Occupancy %" class="compOccupancy">
-                                <input type="number" placeholder="Distance (mi)" step="0.1" class="compDistance">
+                                <input type="number" placeholder="Year" class="compYearBuilt">
+                                <input type="text" placeholder="$0" class="compPrice" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
+                                <input type="number" placeholder="0.00" step="0.01" class="compCapRate">
+                                <input type="number" placeholder="%" class="compOccupancy">
+                                <input type="number" placeholder="mi" step="0.1" class="compDistance">
                             </div>
                         </div>
                     </div>
@@ -386,17 +405,27 @@
                 <section class="form-section">
                     <h2>Rent Comparables</h2>
                     <p class="section-description">Add comparable rental properties in your market to support your rent assumptions.</p>
+                    <div class="rent-comp-labels">
+                        <span>Property Name</span>
+                        <span>Units</span>
+                        <span>Year Built</span>
+                        <span>Occupancy %</span>
+                        <span>Avg Rent</span>
+                        <span>$/SF</span>
+                        <span>Distance (mi)</span>
+                        <span></span>
+                    </div>
                     <div id="rentCompsContainer">
                         <div class="rent-comp-row">
                             <div class="comp-header">Rent Comp #1</div>
                             <div class="rent-comp-grid">
                                 <input type="text" placeholder="Property Name" class="rentCompName">
                                 <input type="number" placeholder="Units" class="rentCompUnits">
-                                <input type="number" placeholder="Year Built" class="rentCompYearBuilt">
-                                <input type="number" placeholder="Occupancy %" class="rentCompOccupancy">
-                                <input type="number" placeholder="Avg Rent $" class="rentCompAvgRent">
+                                <input type="number" placeholder="Year" class="rentCompYearBuilt">
+                                <input type="number" placeholder="%" class="rentCompOccupancy">
+                                <input type="text" placeholder="$0" class="rentCompAvgRent" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
                                 <input type="number" placeholder="$/SF" step="0.01" class="rentCompPSF">
-                                <input type="number" placeholder="Distance (mi)" step="0.1" class="rentCompDistance">
+                                <input type="number" placeholder="mi" step="0.1" class="rentCompDistance">
                             </div>
                         </div>
                     </div>

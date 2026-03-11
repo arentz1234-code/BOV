@@ -986,17 +986,19 @@ function populateDefaultComps(data) {
     comps.forEach((comp, i) => {
         const row = document.createElement('div');
         row.className = 'comp-row';
+        // Format price with dollar sign and commas
+        const formattedPrice = comp.price ? '$' + parseInt(comp.price).toLocaleString('en-US') : '';
         row.innerHTML = `
             <div class="comp-header">Comparable #${i + 1}${i > 0 ? ' <button type="button" class="remove-unit-btn" onclick="removeCompRow(this)" style="float:right;width:28px;height:28px;font-size:1rem;">×</button>' : ''}</div>
             <div class="comp-grid">
                 <input type="text" class="compName" value="${comp.name || ''}" placeholder="Property Name">
                 <input type="month" class="compDate" value="${comp.date || ''}">
                 <input type="number" class="compUnits" value="${comp.units || ''}" placeholder="Units">
-                <input type="number" class="compYearBuilt" value="${comp.year || ''}" placeholder="Year Built">
-                <input type="number" class="compPrice" value="${comp.price || ''}" placeholder="Sale Price">
-                <input type="number" class="compCapRate" value="${comp.capRate || ''}" step="0.01" placeholder="Cap Rate">
-                <input type="number" class="compOccupancy" value="${comp.occ || ''}" placeholder="Occupancy %">
-                <input type="number" class="compDistance" value="${comp.dist || ''}" step="0.1" placeholder="Distance (mi)">
+                <input type="number" class="compYearBuilt" value="${comp.year || ''}" placeholder="Year">
+                <input type="text" class="compPrice" value="${formattedPrice}" placeholder="$0" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
+                <input type="number" class="compCapRate" value="${comp.capRate || ''}" step="0.01" placeholder="0.00">
+                <input type="number" class="compOccupancy" value="${comp.occ || ''}" placeholder="%">
+                <input type="number" class="compDistance" value="${comp.dist || ''}" step="0.1" placeholder="mi">
             </div>
         `;
         container.appendChild(row);
@@ -1025,16 +1027,18 @@ function populateDefaultRentComps(data) {
     rentComps.forEach((rc, i) => {
         const row = document.createElement('div');
         row.className = 'rent-comp-row';
+        // Format rent with dollar sign and commas
+        const formattedRent = rc.rent ? '$' + parseInt(rc.rent).toLocaleString('en-US') : '';
         row.innerHTML = `
             <div class="comp-header">Rent Comp #${i + 1}${i > 0 ? ' <button type="button" class="remove-unit-btn" onclick="removeRentCompRow(this)" style="float:right;width:28px;height:28px;font-size:1rem;">×</button>' : ''}</div>
             <div class="rent-comp-grid">
-                <input type="text" class="rentCompName" value="${rc.name || ''}">
-                <input type="number" class="rentCompUnits" value="${rc.units || ''}">
-                <input type="number" class="rentCompYearBuilt" value="${rc.year || ''}">
-                <input type="number" class="rentCompOccupancy" value="${rc.occ || ''}">
-                <input type="number" class="rentCompAvgRent" value="${rc.rent || ''}">
-                <input type="number" class="rentCompPSF" value="${rc.psf || ''}">
-                <input type="number" class="rentCompDistance" value="${rc.dist || ''}">
+                <input type="text" class="rentCompName" value="${rc.name || ''}" placeholder="Property Name">
+                <input type="number" class="rentCompUnits" value="${rc.units || ''}" placeholder="Units">
+                <input type="number" class="rentCompYearBuilt" value="${rc.year || ''}" placeholder="Year">
+                <input type="number" class="rentCompOccupancy" value="${rc.occ || ''}" placeholder="%">
+                <input type="text" class="rentCompAvgRent" value="${formattedRent}" placeholder="$0" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
+                <input type="number" class="rentCompPSF" value="${rc.psf || ''}" step="0.01" placeholder="$/SF">
+                <input type="number" class="rentCompDistance" value="${rc.dist || ''}" step="0.1" placeholder="mi">
             </div>
         `;
         container.appendChild(row);
@@ -1058,10 +1062,12 @@ function generateRentCompsForLocation(data) {
     // Location-specific rent comps database
     const locationComps = {
         'Stuart': [
-            { name: 'Serenity Stuart', units: 172, year: 2023, occ: 99, rent: 2450, psf: 2.15, dist: 2.1 },
-            { name: 'AxisOne Stuart', units: 284, year: 2021, occ: 95, rent: 2380, psf: 2.08, dist: 2.5 },
-            { name: 'Mason Stuart', units: 270, year: 2024, occ: 96, rent: 2520, psf: 2.22, dist: 4.7 },
-            { name: 'Indigo Stuart', units: 212, year: 2023, occ: 95, rent: 2485, psf: 2.18, dist: 3.0 }
+            // Actual rent data from Apartments.com (March 2026)
+            { name: 'Serenity Stuart', units: 172, year: 2023, occ: 95, rent: 2385, psf: 2.28, dist: 0.5 },
+            { name: 'AxisOne', units: 284, year: 2021, occ: 94, rent: 2200, psf: 1.95, dist: 2.8 },
+            { name: 'Indigo Stuart', units: 212, year: 2023, occ: 93, rent: 2100, psf: 2.15, dist: 3.2 },
+            { name: 'Mason Stuart', units: 270, year: 2024, occ: 96, rent: 2150, psf: 2.05, dist: 4.5 },
+            { name: 'France on Frazier Creek', units: 20, year: 1925, occ: 98, rent: 1785, psf: 2.23, dist: 0.8 }
         ],
         'Miami': [
             { name: 'Modera Biscayne Bay', units: 296, year: 2020, occ: 94, rent: 2850, psf: 3.15, dist: 1.5 },
@@ -1229,49 +1235,143 @@ function generateSalesCompsForLocation(data) {
 }
 
 function generateDefaultUnitMix(numUnits, city) {
-    // Base rents by city
-    const cityRents = {
-        'Stuart': { studio: 1650, one: 1850, two: 2350, three: 2850 },
-        'Miami': { studio: 2200, one: 2650, two: 3200, three: 3800 },
-        'Orlando': { studio: 1500, one: 1750, two: 2150, three: 2600 },
-        'Tampa': { studio: 1600, one: 1900, two: 2300, three: 2750 },
-        'Austin': { studio: 1800, one: 2100, two: 2600, three: 3100 },
-        'Dallas': { studio: 1500, one: 1800, two: 2200, three: 2700 },
-        'Phoenix': { studio: 1400, one: 1650, two: 2050, three: 2500 },
-        'Atlanta': { studio: 1550, one: 1850, two: 2250, three: 2700 }
+    // Base rents by city with detailed pricing for each unit type variant
+    const cityRentData = {
+        'Stuart': {
+            '1BR/1BA': { sf: 864, rent: 1991, market: 2100 },
+            '2BR/1BA (A)': { sf: 1088, rent: 2697, market: 2848 },
+            '2BR/1BA (B)': { sf: 1099, rent: 2247, market: 2295 },
+            '2BR/2BA (A)': { sf: 1204, rent: 2663, market: 3055 },
+            '2BR/2BA (B)': { sf: 1346, rent: 2791, market: 3059 },
+            '2BR/2BA (C)': { sf: 1401, rent: 2772, market: 2849 },
+            '3BR/2BA': { sf: 1596, rent: 3328, market: 3361 }
+        },
+        'Miami': {
+            '1BR/1BA': { sf: 780, rent: 2650, market: 2795 },
+            '2BR/1BA (A)': { sf: 1020, rent: 3150, market: 3325 },
+            '2BR/1BA (B)': { sf: 1045, rent: 2980, market: 3100 },
+            '2BR/2BA (A)': { sf: 1150, rent: 3450, market: 3650 },
+            '2BR/2BA (B)': { sf: 1280, rent: 3625, market: 3825 },
+            '2BR/2BA (C)': { sf: 1350, rent: 3580, market: 3750 },
+            '3BR/2BA': { sf: 1520, rent: 4250, market: 4475 }
+        },
+        'Orlando': {
+            '1BR/1BA': { sf: 750, rent: 1750, market: 1850 },
+            '2BR/1BA (A)': { sf: 980, rent: 2150, market: 2275 },
+            '2BR/1BA (B)': { sf: 1010, rent: 2050, market: 2150 },
+            '2BR/2BA (A)': { sf: 1100, rent: 2350, market: 2495 },
+            '2BR/2BA (B)': { sf: 1220, rent: 2475, market: 2625 },
+            '2BR/2BA (C)': { sf: 1280, rent: 2425, market: 2550 },
+            '3BR/2BA': { sf: 1450, rent: 2850, market: 3025 }
+        },
+        'Tampa': {
+            '1BR/1BA': { sf: 775, rent: 1900, market: 2015 },
+            '2BR/1BA (A)': { sf: 1000, rent: 2350, market: 2485 },
+            '2BR/1BA (B)': { sf: 1030, rent: 2225, market: 2350 },
+            '2BR/2BA (A)': { sf: 1125, rent: 2550, market: 2725 },
+            '2BR/2BA (B)': { sf: 1250, rent: 2700, market: 2875 },
+            '2BR/2BA (C)': { sf: 1320, rent: 2650, market: 2800 },
+            '3BR/2BA': { sf: 1480, rent: 3100, market: 3295 }
+        },
+        'Austin': {
+            '1BR/1BA': { sf: 800, rent: 2100, market: 2225 },
+            '2BR/1BA (A)': { sf: 1050, rent: 2650, market: 2795 },
+            '2BR/1BA (B)': { sf: 1080, rent: 2525, market: 2650 },
+            '2BR/2BA (A)': { sf: 1175, rent: 2850, market: 3025 },
+            '2BR/2BA (B)': { sf: 1300, rent: 3025, market: 3200 },
+            '2BR/2BA (C)': { sf: 1375, rent: 2975, market: 3125 },
+            '3BR/2BA': { sf: 1550, rent: 3450, market: 3650 }
+        },
+        'Dallas': {
+            '1BR/1BA': { sf: 765, rent: 1800, market: 1915 },
+            '2BR/1BA (A)': { sf: 990, rent: 2250, market: 2385 },
+            '2BR/1BA (B)': { sf: 1020, rent: 2125, market: 2250 },
+            '2BR/2BA (A)': { sf: 1110, rent: 2450, market: 2625 },
+            '2BR/2BA (B)': { sf: 1235, rent: 2600, market: 2775 },
+            '2BR/2BA (C)': { sf: 1300, rent: 2550, market: 2700 },
+            '3BR/2BA': { sf: 1465, rent: 2950, market: 3150 }
+        },
+        'Phoenix': {
+            '1BR/1BA': { sf: 740, rent: 1650, market: 1750 },
+            '2BR/1BA (A)': { sf: 960, rent: 2050, market: 2175 },
+            '2BR/1BA (B)': { sf: 990, rent: 1950, market: 2050 },
+            '2BR/2BA (A)': { sf: 1080, rent: 2250, market: 2400 },
+            '2BR/2BA (B)': { sf: 1200, rent: 2400, market: 2550 },
+            '2BR/2BA (C)': { sf: 1265, rent: 2350, market: 2475 },
+            '3BR/2BA': { sf: 1430, rent: 2725, market: 2900 }
+        },
+        'Atlanta': {
+            '1BR/1BA': { sf: 770, rent: 1850, market: 1965 },
+            '2BR/1BA (A)': { sf: 1005, rent: 2300, market: 2435 },
+            '2BR/1BA (B)': { sf: 1035, rent: 2175, market: 2300 },
+            '2BR/2BA (A)': { sf: 1130, rent: 2500, market: 2675 },
+            '2BR/2BA (B)': { sf: 1255, rent: 2650, market: 2825 },
+            '2BR/2BA (C)': { sf: 1325, rent: 2600, market: 2750 },
+            '3BR/2BA': { sf: 1490, rent: 3025, market: 3225 }
+        }
     };
 
-    const rents = cityRents[city] || { studio: 1500, one: 1750, two: 2150, three: 2600 };
+    // Get city data or use default (Stuart-like pricing scaled)
+    const rentData = cityRentData[city] || cityRentData['Stuart'];
 
-    // Typical unit mix distribution for multifamily
+    // Detailed unit distribution for realistic mix
+    // Typical distribution: 15% 1BR, 10% 2BR/1BA variants, 50% 2BR/2BA variants, 8% 3BR
     const unitMix = [
         {
             type: '1BR/1BA',
-            count: Math.round(numUnits * 0.35),
-            sf: 750,
-            currentRent: rents.one,
-            marketRent: Math.round(rents.one * 1.05)
+            count: Math.max(1, Math.round(numUnits * 0.14)),
+            sf: rentData['1BR/1BA'].sf,
+            currentRent: rentData['1BR/1BA'].rent,
+            marketRent: rentData['1BR/1BA'].market
         },
         {
-            type: '2BR/2BA',
-            count: Math.round(numUnits * 0.45),
-            sf: 1050,
-            currentRent: rents.two,
-            marketRent: Math.round(rents.two * 1.05)
+            type: '2BR/1BA (A)',
+            count: Math.max(1, Math.round(numUnits * 0.04)),
+            sf: rentData['2BR/1BA (A)'].sf,
+            currentRent: rentData['2BR/1BA (A)'].rent,
+            marketRent: rentData['2BR/1BA (A)'].market
+        },
+        {
+            type: '2BR/1BA (B)',
+            count: Math.max(1, Math.round(numUnits * 0.04)),
+            sf: rentData['2BR/1BA (B)'].sf,
+            currentRent: rentData['2BR/1BA (B)'].rent,
+            marketRent: rentData['2BR/1BA (B)'].market
+        },
+        {
+            type: '2BR/2BA (A)',
+            count: Math.max(1, Math.round(numUnits * 0.47)),
+            sf: rentData['2BR/2BA (A)'].sf,
+            currentRent: rentData['2BR/2BA (A)'].rent,
+            marketRent: rentData['2BR/2BA (A)'].market
+        },
+        {
+            type: '2BR/2BA (B)',
+            count: Math.max(1, Math.round(numUnits * 0.18)),
+            sf: rentData['2BR/2BA (B)'].sf,
+            currentRent: rentData['2BR/2BA (B)'].rent,
+            marketRent: rentData['2BR/2BA (B)'].market
+        },
+        {
+            type: '2BR/2BA (C)',
+            count: Math.max(1, Math.round(numUnits * 0.04)),
+            sf: rentData['2BR/2BA (C)'].sf,
+            currentRent: rentData['2BR/2BA (C)'].rent,
+            marketRent: rentData['2BR/2BA (C)'].market
         },
         {
             type: '3BR/2BA',
-            count: Math.round(numUnits * 0.20),
-            sf: 1350,
-            currentRent: rents.three,
-            marketRent: Math.round(rents.three * 1.05)
+            count: Math.max(1, Math.round(numUnits * 0.08)),
+            sf: rentData['3BR/2BA'].sf,
+            currentRent: rentData['3BR/2BA'].rent,
+            marketRent: rentData['3BR/2BA'].market
         }
     ];
 
-    // Adjust counts to match total units
+    // Adjust counts to match total units (add/subtract from largest category - 2BR/2BA (A))
     const totalCount = unitMix.reduce((sum, u) => sum + u.count, 0);
     if (totalCount !== numUnits) {
-        unitMix[1].count += (numUnits - totalCount); // Add difference to 2BR
+        unitMix[3].count += (numUnits - totalCount); // Adjust 2BR/2BA (A)
     }
 
     return unitMix;
@@ -1284,16 +1384,59 @@ function populateUnitMix(unitMix) {
     unitMix.forEach(unit => {
         const row = document.createElement('div');
         row.className = 'unit-row';
+        // Format currency values
+        const formattedCurrentRent = unit.currentRent ? '$' + parseInt(unit.currentRent).toLocaleString('en-US') : '';
+        const formattedMarketRent = unit.marketRent ? '$' + parseInt(unit.marketRent).toLocaleString('en-US') : '';
         row.innerHTML = `
-            <input type="text" placeholder="Unit Type" class="unitType" value="${unit.type || ''}">
-            <input type="number" placeholder="# Units" class="unitCount" value="${unit.count || ''}">
-            <input type="number" placeholder="Avg SF" class="unitSF" value="${unit.sf || ''}">
-            <input type="number" placeholder="Current Rent $" class="currentRent" value="${unit.currentRent || ''}">
-            <input type="number" placeholder="Market Rent $" class="marketRent" value="${unit.marketRent || ''}">
+            <input type="text" placeholder="e.g., 1BR/1BA" class="unitType" value="${unit.type || ''}">
+            <input type="number" placeholder="0" class="unitCount" value="${unit.count || ''}">
+            <input type="number" placeholder="0" class="unitSF" value="${unit.sf || ''}">
+            <input type="text" placeholder="$0" class="currentRent" value="${formattedCurrentRent}" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
+            <input type="text" placeholder="$0" class="marketRent" value="${formattedMarketRent}" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
             <button type="button" class="remove-unit-btn" onclick="removeUnitRow(this)">×</button>
         `;
         container.appendChild(row);
     });
+
+    // Calculate and add average rent summary row
+    addAverageRentRow(container, unitMix);
+}
+
+function addAverageRentRow(container, unitMix) {
+    // Calculate weighted averages
+    let totalUnits = 0;
+    let totalSF = 0;
+    let totalCurrentRent = 0;
+    let totalMarketRent = 0;
+
+    unitMix.forEach(unit => {
+        const count = unit.count || 0;
+        totalUnits += count;
+        totalSF += (unit.sf || 0) * count;
+        totalCurrentRent += (unit.currentRent || 0) * count;
+        totalMarketRent += (unit.marketRent || 0) * count;
+    });
+
+    const avgSF = totalUnits > 0 ? Math.round(totalSF / totalUnits) : 0;
+    const avgCurrentRent = totalUnits > 0 ? Math.round(totalCurrentRent / totalUnits) : 0;
+    const avgMarketRent = totalUnits > 0 ? Math.round(totalMarketRent / totalUnits) : 0;
+
+    // Format currency
+    const formattedCurrentRent = '$' + avgCurrentRent.toLocaleString('en-US');
+    const formattedMarketRent = '$' + avgMarketRent.toLocaleString('en-US');
+
+    // Create average row
+    const avgRow = document.createElement('div');
+    avgRow.className = 'unit-row average-row';
+    avgRow.innerHTML = `
+        <input type="text" class="unitType" value="AVERAGE" readonly style="font-weight: bold; background: linear-gradient(135deg, #e6f0ff, #f0f4f8); border: 2px solid #2563eb;">
+        <input type="number" class="unitCount" value="${totalUnits}" readonly style="font-weight: bold; background: linear-gradient(135deg, #e6f0ff, #f0f4f8); border: 2px solid #2563eb; text-align: center;">
+        <input type="number" class="unitSF" value="${avgSF}" readonly style="font-weight: bold; background: linear-gradient(135deg, #e6f0ff, #f0f4f8); border: 2px solid #2563eb; text-align: center;">
+        <input type="text" class="currentRent" value="${formattedCurrentRent}" readonly style="font-weight: bold; background: linear-gradient(135deg, #e6f0ff, #f0f4f8); border: 2px solid #2563eb; text-align: right; font-family: 'Courier New', monospace;">
+        <input type="text" class="marketRent" value="${formattedMarketRent}" readonly style="font-weight: bold; background: linear-gradient(135deg, #e6f0ff, #f0f4f8); border: 2px solid #2563eb; text-align: right; font-family: 'Courier New', monospace;">
+        <div style="width: 32px;"></div>
+    `;
+    container.appendChild(avgRow);
 }
 
 function populateFormFromRentRoll(data) {

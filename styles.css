@@ -157,22 +157,60 @@ header .subtitle {
     color: var(--text-light);
 }
 
+/* Unit Mix Labels */
+.unit-mix-labels {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 40px;
+    gap: 10px;
+    padding: 10px 15px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 8px 8px 0 0;
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 0;
+}
+
+.unit-mix-labels span {
+    text-align: center;
+}
+
+.unit-mix-labels span:first-child {
+    text-align: left;
+}
+
 /* Unit Mix Rows */
-.unit-row,
-.comp-grid {
+.unit-row {
     display: grid;
     grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
     gap: 10px;
-    margin-bottom: 15px;
+    padding: 10px 15px;
+    margin-bottom: 0;
     align-items: center;
+    background: var(--bg-color);
+    border-bottom: 1px solid var(--border-color);
 }
 
-.unit-row input,
-.comp-grid input {
+.unit-row:last-of-type:not(.average-row) {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.unit-row input {
     padding: 10px 12px;
     border: 1px solid var(--border-color);
     border-radius: 6px;
     font-size: 0.9rem;
+    text-align: center;
+}
+
+.unit-row input:first-child {
+    text-align: left;
+}
+
+.unit-row input.currentRent,
+.unit-row input.marketRent {
+    text-align: right;
+    font-family: 'Courier New', monospace;
 }
 
 .remove-unit-btn {
@@ -191,12 +229,60 @@ header .subtitle {
     background: #c53030;
 }
 
+/* Average Row Styling */
+.average-row {
+    margin-top: 10px;
+    padding-top: 15px;
+    border-top: 2px solid var(--primary-color);
+}
+
+.average-row input {
+    font-weight: 700 !important;
+    background: linear-gradient(135deg, #e6f0ff, #f0f4f8) !important;
+    border: 2px solid var(--primary-color) !important;
+    color: var(--primary-color) !important;
+}
+
+.average-row input:read-only {
+    cursor: default;
+}
+
 /* Comparable Sales */
+.comp-labels,
+.rent-comp-labels {
+    display: grid;
+    grid-template-columns: 2fr repeat(7, 1fr) 40px;
+    gap: 10px;
+    padding: 10px 20px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 8px 8px 0 0;
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 0;
+}
+
+.comp-labels span,
+.rent-comp-labels span {
+    text-align: center;
+}
+
+.comp-labels span:first-child,
+.rent-comp-labels span:first-child {
+    text-align: left;
+}
+
 .comp-row {
     background: var(--bg-color);
     padding: 20px;
-    border-radius: 8px;
-    margin-bottom: 15px;
+    border-radius: 0;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.comp-row:last-child {
+    border-radius: 0 0 8px 8px;
+    border-bottom: none;
 }
 
 .comp-header {
@@ -206,7 +292,28 @@ header .subtitle {
 }
 
 .comp-grid {
-    grid-template-columns: 2fr repeat(7, 1fr);
+    display: grid;
+    grid-template-columns: 2fr repeat(7, 1fr) 40px;
+    gap: 10px;
+    align-items: center;
+}
+
+.comp-grid input {
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.comp-grid input:first-child {
+    text-align: left;
+}
+
+.comp-grid input.compPrice,
+.comp-grid input.rentCompAvgRent {
+    text-align: right;
+    font-family: 'Courier New', monospace;
 }
 
 /* Buttons */
@@ -903,7 +1010,7 @@ header .subtitle {
 
 .rent-comp-grid {
     display: grid;
-    grid-template-columns: 2fr repeat(6, 1fr);
+    grid-template-columns: 2fr repeat(6, 1fr) 40px;
     gap: 10px;
     align-items: center;
 }
@@ -913,6 +1020,30 @@ header .subtitle {
     border: 1px solid var(--border-color);
     border-radius: 6px;
     font-size: 0.9rem;
+    text-align: center;
+}
+
+.rent-comp-grid input:first-child {
+    text-align: left;
+}
+
+.rent-comp-grid input.rentCompAvgRent {
+    text-align: right;
+    font-family: 'Courier New', monospace;
+}
+
+/* Rent Comp Row Styling */
+.rent-comp-row {
+    background: var(--bg-color);
+    padding: 20px;
+    border-radius: 0;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.rent-comp-row:last-child {
+    border-radius: 0 0 8px 8px;
+    border-bottom: none;
 }
 
 @media (max-width: 768px) {
