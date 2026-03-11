@@ -785,6 +785,10 @@ function populateFormFromOM(data) {
     // === SECTION 2: Unit Mix ===
     if (data.unitMix && data.unitMix.length > 0) {
         populateUnitMix(data.unitMix);
+    } else {
+        // Generate default unit mix based on number of units
+        const defaultUnitMix = generateDefaultUnitMix(numUnits, data.city);
+        populateUnitMix(defaultUnitMix);
     }
 
     // === SECTION 3: Income & Expenses ===
@@ -1128,6 +1132,55 @@ function generateSalesCompsForLocation(data) {
     }
 
     return comps;
+}
+
+function generateDefaultUnitMix(numUnits, city) {
+    // Base rents by city
+    const cityRents = {
+        'Stuart': { studio: 1650, one: 1850, two: 2350, three: 2850 },
+        'Miami': { studio: 2200, one: 2650, two: 3200, three: 3800 },
+        'Orlando': { studio: 1500, one: 1750, two: 2150, three: 2600 },
+        'Tampa': { studio: 1600, one: 1900, two: 2300, three: 2750 },
+        'Austin': { studio: 1800, one: 2100, two: 2600, three: 3100 },
+        'Dallas': { studio: 1500, one: 1800, two: 2200, three: 2700 },
+        'Phoenix': { studio: 1400, one: 1650, two: 2050, three: 2500 },
+        'Atlanta': { studio: 1550, one: 1850, two: 2250, three: 2700 }
+    };
+
+    const rents = cityRents[city] || { studio: 1500, one: 1750, two: 2150, three: 2600 };
+
+    // Typical unit mix distribution for multifamily
+    const unitMix = [
+        {
+            type: '1BR/1BA',
+            count: Math.round(numUnits * 0.35),
+            sf: 750,
+            currentRent: rents.one,
+            marketRent: Math.round(rents.one * 1.05)
+        },
+        {
+            type: '2BR/2BA',
+            count: Math.round(numUnits * 0.45),
+            sf: 1050,
+            currentRent: rents.two,
+            marketRent: Math.round(rents.two * 1.05)
+        },
+        {
+            type: '3BR/2BA',
+            count: Math.round(numUnits * 0.20),
+            sf: 1350,
+            currentRent: rents.three,
+            marketRent: Math.round(rents.three * 1.05)
+        }
+    ];
+
+    // Adjust counts to match total units
+    const totalCount = unitMix.reduce((sum, u) => sum + u.count, 0);
+    if (totalCount !== numUnits) {
+        unitMix[1].count += (numUnits - totalCount); // Add difference to 2BR
+    }
+
+    return unitMix;
 }
 
 function populateUnitMix(unitMix) {
