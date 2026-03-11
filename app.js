@@ -1143,18 +1143,18 @@ function loadAzulData() {
     document.getElementById('utilities').value = 'All utilities paid by resident (Electric, Water/Sewer, Trash, Pest, Cable)';
     document.getElementById('zoning').value = 'RPUD (Residential Planned Unit Development)';
 
-    // Unit Mix - clear existing and add AZUL data from OM Page 14/48
+    // Unit Mix - from Actual Rent Roll (12.8.25)
     const unitContainer = document.getElementById('unitMixContainer');
     unitContainer.innerHTML = '';
 
     const unitData = [
-        { type: '1BR/1BA', count: 7, sf: 864, current: 1991, market: 2100 },
-        { type: '2BR/1BA (A)', count: 2, sf: 1088, current: 2697, market: 2848 },
-        { type: '2BR/1BA (B)', count: 2, sf: 1099, current: 2247, market: 2295 },
-        { type: '2BR/2BA (A)', count: 23, sf: 1204, current: 2663, market: 3055 },
-        { type: '2BR/2BA (B)', count: 9, sf: 1346, current: 2791, market: 3059 },
-        { type: '2BR/2BA (C)', count: 2, sf: 1401, current: 2772, market: 2849 },
-        { type: '3BR/2BA', count: 4, sf: 1596, current: 3328, market: 3361 }
+        { type: '1BR/1BA', count: 7, sf: 864, current: 1991, market: 1986 },
+        { type: '2BR/1BA (A)', count: 2, sf: 1088, current: 2696, market: 2595 },
+        { type: '2BR/1BA (B)', count: 2, sf: 1099, current: 2247, market: 2345 },
+        { type: '2BR/2BA (A)', count: 23, sf: 1204, current: 2645, market: 2697 },
+        { type: '2BR/2BA (B)', count: 9, sf: 1346, current: 2791, market: 2866 },
+        { type: '2BR/2BA (C)', count: 2, sf: 1401, current: 2772, market: 2899 },
+        { type: '3BR/2BA', count: 4, sf: 1596, current: 3317, market: 3295 }
     ];
 
     unitData.forEach(u => {
