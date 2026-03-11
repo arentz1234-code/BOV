@@ -744,7 +744,7 @@ function parseRentRollData(excelData) {
 
     // Find header row
     let headerIndex = 0;
-    for (let i = 0; i < Math.min(10, rows.length); i++) {
+    for (let i = 0; i < Math.min(15, rows.length); i++) {
         const row = rows[i];
         if (row && row.some(cell =>
             String(cell).toLowerCase().includes('unit') ||
@@ -758,32 +758,97 @@ function parseRentRollData(excelData) {
 
     const headers = rows[headerIndex].map(h => String(h || '').toLowerCase());
 
-    // Find column indices
+    // Find column indices - search more broadly
     const unitCol = headers.findIndex(h => h.includes('unit') && !h.includes('type'));
-    const typeCol = headers.findIndex(h => h.includes('type') || h.includes('bed') || h.includes('floor'));
-    const sqftCol = headers.findIndex(h => h.includes('sqft') || h.includes('sf') || h.includes('square'));
-    const rentCol = headers.findIndex(h => h.includes('rent') || h.includes('rate'));
+    let typeCol = headers.findIndex(h => h.includes('type') || h.includes('bed') || h.includes('floor plan'));
+    const sqftCol = headers.findIndex(h => h.includes('sqft') || h.includes('sq') || h.includes('feet') || h.includes('size'));
+    const rentCol = headers.findIndex(h => (h.includes('rent') && !h.includes('market')) || h.includes('amount') || h.includes('charge'));
     const marketCol = headers.findIndex(h => h.includes('market'));
-    const statusCol = headers.findIndex(h => h.includes('status') || h.includes('vacant') || h.includes('occupied'));
+    const statusCol = headers.findIndex(h => h.includes('status') || h.includes('vacant') || h.includes('occupied') || h.includes('lease'));
 
-    // Parse unit data
+    // Parse unit data - also search for type in adjacent columns if not found
     for (let i = headerIndex + 1; i < rows.length; i++) {
         const row = rows[i];
         if (!row || row.length === 0) continue;
 
+        // Skip rows that look like headers or totals
+        const firstCell = String(row[0] || '').toLowerCase();
+        if (firstCell.includes('total') || firstCell.includes('average') || firstCell.includes('summary')) continue;
+
+        // Get unit number - could be in first non-empty column
+        let unitNum = unitCol >= 0 ? row[unitCol] : row[0];
+        if (!unitNum || String(unitNum).toLowerCase() === 'nan') {
+            // Try to find first numeric-looking cell
+            for (let j = 0; j < Math.min(5, row.length); j++) {
+                const cell = String(row[j] || '');
+                if (/^\d+$/.test(cell.replace('.0', ''))) {
+                    unitNum = cell;
+                    break;
+                }
+            }
+        }
+
+        // Get unit type code
+        let typeCode = typeCol >= 0 ? row[typeCol] : '';
+        // If type column didn't have data, look in adjacent columns for type codes
+        if (!typeCode || String(typeCode).toLowerCase() === 'nan') {
+            for (let j = 0; j < Math.min(10, row.length); j++) {
+                const cell = String(row[j] || '');
+                // Look for patterns like "sf1992c2-Classic", "1BR", "2BR/2BA", etc.
+                if (cell.match(/sf\d+|[123]br|\d+\s*bed|\d+br\/\d+ba/i)) {
+                    typeCode = cell;
+                    break;
+                }
+            }
+        }
+
+        // Get square footage
+        let sqft = sqftCol >= 0 ? parseFloat(row[sqftCol]) || 0 : 0;
+        if (sqft === 0) {
+            // Search for a reasonable SF value (between 400 and 3000)
+            for (let j = 0; j < row.length; j++) {
+                const val = parseFloat(row[j]);
+                if (val >= 400 && val <= 3000) {
+                    sqft = val;
+                    break;
+                }
+            }
+        }
+
+        // Get rent - search for values that look like monthly rent (between 500 and 10000)
+        let rent = rentCol >= 0 ? parseFloat(String(row[rentCol]).replace(/[$,]/g, '')) || 0 : 0;
+        let marketRent = marketCol >= 0 ? parseFloat(String(row[marketCol]).replace(/[$,]/g, '')) || 0 : 0;
+
+        if (rent === 0) {
+            // Search for rent values
+            for (let j = 0; j < row.length; j++) {
+                const val = parseFloat(String(row[j]).replace(/[$,]/g, ''));
+                if (val >= 500 && val <= 10000) {
+                    if (rent === 0) rent = val;
+                    else if (marketRent === 0) marketRent = val;
+                }
+            }
+        }
+
+        // Convert type code to bedroom/bathroom type
+        const bedroomType = mapTypeCodeToBedBath(typeCode, sqft);
+
         const unit = {
-            unitNum: unitCol >= 0 ? row[unitCol] : '',
-            type: typeCol >= 0 ? row[typeCol] : '',
-            sqft: sqftCol >= 0 ? parseFloat(row[sqftCol]) || 0 : 0,
-            rent: rentCol >= 0 ? parseFloat(String(row[rentCol]).replace(/[$,]/g, '')) || 0 : 0,
-            marketRent: marketCol >= 0 ? parseFloat(String(row[marketCol]).replace(/[$,]/g, '')) || 0 : 0,
+            unitNum: String(unitNum).replace('.0', ''),
+            type: bedroomType,
+            typeCode: typeCode, // Keep original code for reference
+            sqft: sqft,
+            rent: rent,
+            marketRent: marketRent || rent,
             status: statusCol >= 0 ? row[statusCol] : 'Occupied'
         };
 
-        if (unit.unitNum || unit.rent > 0) {
+        // Only add if we have a unit number or rent
+        if ((unit.unitNum && /^\d+$/.test(unit.unitNum)) || unit.rent > 0) {
             data.units.push(unit);
             data.summary.totalUnits++;
-            if (String(unit.status).toLowerCase().includes('vacant')) {
+            const statusStr = String(unit.status).toLowerCase();
+            if (statusStr.includes('vacant') || statusStr === 'v') {
                 data.summary.vacantUnits++;
             } else {
                 data.summary.occupiedUnits++;
@@ -797,6 +862,45 @@ function parseRentRollData(excelData) {
     }
 
     return data;
+}
+
+// Map unit type codes to bedroom/bathroom types
+function mapTypeCodeToBedBath(typeCode, sqft) {
+    const code = String(typeCode || '').toLowerCase();
+
+    // Direct patterns
+    if (code.match(/3\s*br|3\s*bed|3bd/i)) return '3BR/2BA';
+    if (code.match(/2\s*br|2\s*bed|2bd/i)) {
+        if (sqft > 1300) return '2BR/2BA (B)';
+        if (sqft > 1150) return '2BR/2BA (A)';
+        return '2BR/1BA';
+    }
+    if (code.match(/1\s*br|1\s*bed|1bd|studio/i)) return '1BR/1BA';
+
+    // AZUL-style codes: sf1991a1, sf1992c1, sf1993c1, etc.
+    // 1991 = 1BR, 1992 = 2BR, 1993 = 3BR based on the pattern
+    if (code.includes('1991') || code.includes('91a')) return '1BR/1BA';
+    if (code.includes('1993') || code.includes('93c')) return '3BR/2BA';
+    if (code.includes('1992') || code.includes('92')) {
+        // 2BR variants based on SF
+        if (sqft >= 1380) return '2BR/2BA (C)';
+        if (sqft >= 1300) return '2BR/2BA (B)';
+        if (sqft >= 1150) return '2BR/2BA (A)';
+        if (sqft >= 1080) return '2BR/1BA (A)';
+        return '2BR/1BA (B)';
+    }
+
+    // Fallback based on square footage
+    if (sqft > 0) {
+        if (sqft >= 1500) return '3BR/2BA';
+        if (sqft >= 1300) return '2BR/2BA (B)';
+        if (sqft >= 1100) return '2BR/2BA (A)';
+        if (sqft >= 900) return '2BR/1BA';
+        if (sqft >= 600) return '1BR/1BA';
+        return 'Studio';
+    }
+
+    return typeCode || 'Unknown';
 }
 
 function parseT12Data(excelData) {
