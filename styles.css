@@ -892,3 +892,31 @@ header .subtitle {
     color: var(--text-light);
     font-weight: 500;
 }
+
+/* Rent Comparables Rows */
+.rent-comp-row {
+    background: var(--bg-color);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.rent-comp-grid {
+    display: grid;
+    grid-template-columns: 2fr repeat(6, 1fr);
+    gap: 10px;
+    align-items: center;
+}
+
+.rent-comp-grid input {
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+    .rent-comp-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}

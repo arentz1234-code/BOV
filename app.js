@@ -3,6 +3,52 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
 });
 
+// Photo upload handling
+let propertyPhotoData = null;
+
+document.getElementById('photoUploadZone').addEventListener('click', () => {
+    document.getElementById('photoFile').click();
+});
+
+document.getElementById('photoFile').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        handlePhotoUpload(file);
+    }
+});
+
+document.getElementById('photoUploadZone').addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.currentTarget.classList.add('drag-over');
+});
+
+document.getElementById('photoUploadZone').addEventListener('dragleave', (e) => {
+    e.currentTarget.classList.remove('drag-over');
+});
+
+document.getElementById('photoUploadZone').addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+        handlePhotoUpload(file);
+    }
+});
+
+function handlePhotoUpload(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        propertyPhotoData = e.target.result;
+        const preview = document.getElementById('photoPreview');
+        preview.src = propertyPhotoData;
+        preview.style.display = 'block';
+        document.getElementById('photoUploadZone').classList.add('has-file');
+        document.getElementById('photoStatus').innerHTML = `<span class="file-name">${file.name}</span>`;
+        document.getElementById('photoStatus').classList.add('success');
+    };
+    reader.readAsDataURL(file);
+}
+
 function switchTab(tabId) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
@@ -66,6 +112,58 @@ function removeCompRow(btn) {
         header.innerHTML = `Comparable #${idx + 1} ${btnHtml}`;
     });
     compCount = document.querySelectorAll('.comp-row').length;
+}
+
+// Rent Comparables Management
+let rentCompCount = 1;
+
+function addRentCompRow() {
+    rentCompCount++;
+    const container = document.getElementById('rentCompsContainer');
+    const row = document.createElement('div');
+    row.className = 'rent-comp-row';
+    row.innerHTML = `
+        <div class="comp-header">Rent Comp #${rentCompCount} <button type="button" class="remove-unit-btn" onclick="removeRentCompRow(this)" style="float:right;width:28px;height:28px;font-size:1rem;">×</button></div>
+        <div class="rent-comp-grid">
+            <input type="text" placeholder="Property Name" class="rentCompName">
+            <input type="number" placeholder="Units" class="rentCompUnits">
+            <input type="number" placeholder="Year Built" class="rentCompYearBuilt">
+            <input type="number" placeholder="Occupancy %" class="rentCompOccupancy">
+            <input type="number" placeholder="Avg Rent $" class="rentCompAvgRent">
+            <input type="number" placeholder="$/SF" step="0.01" class="rentCompPSF">
+            <input type="number" placeholder="Distance (mi)" step="0.1" class="rentCompDistance">
+        </div>
+    `;
+    container.appendChild(row);
+}
+
+function removeRentCompRow(btn) {
+    btn.closest('.rent-comp-row').remove();
+    // Renumber remaining rent comps
+    document.querySelectorAll('.rent-comp-row .comp-header').forEach((header, idx) => {
+        const btnHtml = header.querySelector('button') ? header.querySelector('button').outerHTML : '';
+        header.innerHTML = `Rent Comp #${idx + 1} ${btnHtml}`;
+    });
+    rentCompCount = document.querySelectorAll('.rent-comp-row').length;
+}
+
+// Collect rent comparables data
+function getRentCompsData() {
+    const rentComps = [];
+    document.querySelectorAll('.rent-comp-row').forEach(row => {
+        const name = row.querySelector('.rentCompName').value;
+        const units = parseInt(row.querySelector('.rentCompUnits').value) || 0;
+        const yearBuilt = row.querySelector('.rentCompYearBuilt').value;
+        const occupancy = parseFloat(row.querySelector('.rentCompOccupancy').value) || 0;
+        const avgRent = parseFloat(row.querySelector('.rentCompAvgRent').value) || 0;
+        const psf = parseFloat(row.querySelector('.rentCompPSF').value) || 0;
+        const distance = parseFloat(row.querySelector('.rentCompDistance').value) || 0;
+
+        if (name) {
+            rentComps.push({ name, units, yearBuilt, occupancy, avgRent, psf, distance });
+        }
+    });
+    return rentComps;
 }
 
 // Toggle Debt Section
@@ -195,6 +293,12 @@ function generateBOV() {
         // Comps
         comps: getCompsData(),
         compNarrative: getValue('compNarrative', '[Comparable analysis narrative not provided]'),
+
+        // Rent Comps
+        rentComps: getRentCompsData(),
+
+        // Property Photo
+        propertyPhoto: propertyPhotoData,
 
         // Debt
         hasAssumableDebt: document.getElementById('hasAssumableDebt').checked,
@@ -358,7 +462,9 @@ function generateBOVHtml(data, fin) {
         <div class="cover-page">
             <h1>BROKER OPINION OF VALUE</h1>
             <div class="address">${data.propertyName}<br>${fullAddress}</div>
-            <div class="photo-placeholder">[INSERT AERIAL OR FAÇADE PHOTO]</div>
+            ${data.propertyPhoto
+                ? `<div class="property-photo"><img src="${data.propertyPhoto}" alt="${data.propertyName}" style="max-width:100%; max-height:400px; border-radius:8px; margin:30px 0; box-shadow: 0 4px 20px rgba(0,0,0,0.15);"></div>`
+                : `<div class="photo-placeholder">[INSERT AERIAL OR FAÇADE PHOTO]</div>`}
             <div class="cover-info">
                 <strong>Prepared by:</strong> ${data.brokerName}, ${data.brokerageFirm}<br>
                 <strong>Prepared for:</strong> ${data.clientName}<br>
@@ -527,6 +633,48 @@ function generateBOVHtml(data, fin) {
             </table>
 
             <p style="margin-top: 20px;">${data.compNarrative}</p>
+
+            ${data.rentComps && data.rentComps.length > 0 ? `
+            <h3>4B. Rent Comparables</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Property</th>
+                        <th>Units</th>
+                        <th>Year Built</th>
+                        <th>Occupancy</th>
+                        <th>Avg Rent</th>
+                        <th>$/SF</th>
+                        <th>Distance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.rentComps.map((rc, i) => `
+                        <tr>
+                            <td>${i + 1}</td>
+                            <td>${rc.name}</td>
+                            <td>${rc.units}</td>
+                            <td>${rc.yearBuilt || '—'}</td>
+                            <td>${rc.occupancy}%</td>
+                            <td>${formatCurrency(rc.avgRent)}</td>
+                            <td>$${rc.psf.toFixed(2)}</td>
+                            <td>${rc.distance} mi</td>
+                        </tr>
+                    `).join('')}
+                    <tr class="subject-row">
+                        <td>—</td>
+                        <td><strong>Subject</strong></td>
+                        <td>${data.numUnits}</td>
+                        <td>${data.yearBuilt}</td>
+                        <td>${data.occupancyRate}%</td>
+                        <td><strong>${formatCurrency(fin.avgCurrentRent)}</strong></td>
+                        <td><strong>$${fin.totalSF > 0 ? ((fin.avgCurrentRent * 12) / (fin.totalSF / fin.totalUnits)).toFixed(2) : '—'}</strong></td>
+                        <td>—</td>
+                    </tr>
+                </tbody>
+            </table>
+            ` : ''}
         </section>
 
         <!-- INCOME & VALUATION -->
@@ -784,6 +932,37 @@ function loadSampleData() {
 
     document.getElementById('compNarrative').value = 'The subject property compares favorably to the comparable sales. Comps 1 and 4 represent superior locations with higher price points, while Comps 2 and 3 are slightly inferior in terms of vintage and condition. After adjustments for age (subject renovated 2019), unit mix (subject has favorable 2BR concentration), and location (subject benefits from Riverside Drive frontage), we conclude the subject should trade at the mid-to-upper range of the comparable set, supported by the value-add potential in the unrenovated units.';
 
+    // Rent Comparables
+    const rentCompContainer = document.getElementById('rentCompsContainer');
+    rentCompContainer.innerHTML = '';
+    rentCompCount = 0;
+
+    const rentCompData = [
+        { name: 'The Edison at Riverside', units: 180, year: 2020, occ: 96, rent: 1425, psf: 1.85, dist: 0.5 },
+        { name: 'Eastwood Apartments', units: 92, year: 1995, occ: 94, rent: 1275, psf: 1.62, dist: 0.8 },
+        { name: 'Montage at East Austin', units: 240, year: 2018, occ: 95, rent: 1550, psf: 1.95, dist: 1.5 },
+        { name: 'Travis Heights Living', units: 68, year: 1982, occ: 92, rent: 1195, psf: 1.48, dist: 2.0 }
+    ];
+
+    rentCompData.forEach((rc, i) => {
+        rentCompCount++;
+        const row = document.createElement('div');
+        row.className = 'rent-comp-row';
+        row.innerHTML = `
+            <div class="comp-header">Rent Comp #${i + 1}${i > 0 ? ' <button type="button" class="remove-unit-btn" onclick="removeRentCompRow(this)" style="float:right;width:28px;height:28px;font-size:1rem;">×</button>' : ''}</div>
+            <div class="rent-comp-grid">
+                <input type="text" class="rentCompName" value="${rc.name}">
+                <input type="number" class="rentCompUnits" value="${rc.units}">
+                <input type="number" class="rentCompYearBuilt" value="${rc.year}">
+                <input type="number" class="rentCompOccupancy" value="${rc.occ}">
+                <input type="number" class="rentCompAvgRent" value="${rc.rent}">
+                <input type="number" class="rentCompPSF" value="${rc.psf}">
+                <input type="number" class="rentCompDistance" value="${rc.dist}">
+            </div>
+        `;
+        rentCompContainer.appendChild(row);
+    });
+
     // Debt
     document.getElementById('hasAssumableDebt').checked = true;
     toggleDebtSection();
@@ -954,6 +1133,38 @@ Rent comparables in the market demonstrate strong fundamentals:
 - Tradewinds at Hobe Sound (177 units, 2024): 98% occupancy, 11.5 miles
 
 Average occupancy across the competitive set is 95%, supporting the subject's current 96% occupancy. The subject's average rent of $2,634/unit ($2.17/SF) compares favorably to market averages, with 16.73% EGI upside achievable through lease-up to market rents by Year Two.`;
+
+    // Rent Comparables (from OM Page 20)
+    const rentCompContainer = document.getElementById('rentCompsContainer');
+    rentCompContainer.innerHTML = '';
+    rentCompCount = 0;
+
+    const rentCompData = [
+        { name: 'Serenity Stuart', units: 172, year: 2023, occ: 99, rent: 2450, psf: 2.15, dist: 2.1 },
+        { name: 'AxisOne', units: 284, year: 2021, occ: 95, rent: 2380, psf: 2.08, dist: 2.5 },
+        { name: 'Mason Stuart', units: 270, year: 2024, occ: 96, rent: 2520, psf: 2.22, dist: 4.7 },
+        { name: 'Indigo Stuart', units: 212, year: 2023, occ: 95, rent: 2485, psf: 2.18, dist: 3.0 },
+        { name: 'Tradewinds at Hobe Sound', units: 177, year: 2024, occ: 98, rent: 2295, psf: 2.05, dist: 11.5 }
+    ];
+
+    rentCompData.forEach((rc, i) => {
+        rentCompCount++;
+        const row = document.createElement('div');
+        row.className = 'rent-comp-row';
+        row.innerHTML = `
+            <div class="comp-header">Rent Comp #${i + 1}${i > 0 ? ' <button type="button" class="remove-unit-btn" onclick="removeRentCompRow(this)" style="float:right;width:28px;height:28px;font-size:1rem;">×</button>' : ''}</div>
+            <div class="rent-comp-grid">
+                <input type="text" class="rentCompName" value="${rc.name}">
+                <input type="number" class="rentCompUnits" value="${rc.units}">
+                <input type="number" class="rentCompYearBuilt" value="${rc.year}">
+                <input type="number" class="rentCompOccupancy" value="${rc.occ}">
+                <input type="number" class="rentCompAvgRent" value="${rc.rent}">
+                <input type="number" class="rentCompPSF" value="${rc.psf}">
+                <input type="number" class="rentCompDistance" value="${rc.dist}">
+            </div>
+        `;
+        rentCompContainer.appendChild(row);
+    });
 
     // No Assumable Debt - offered free and clear
     document.getElementById('hasAssumableDebt').checked = false;
