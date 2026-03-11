@@ -788,14 +788,23 @@ function parseRentRollData(excelData) {
             }
         }
 
-        // Get unit type code
-        let typeCode = typeCol >= 0 ? row[typeCol] : '';
-        // If type column didn't have data, look in adjacent columns for type codes
-        if (!typeCode || String(typeCode).toLowerCase() === 'nan') {
-            for (let j = 0; j < Math.min(10, row.length); j++) {
+        // Get unit type code - search multiple columns
+        let typeCode = '';
+
+        // First try the type column
+        if (typeCol >= 0 && row[typeCol]) {
+            const val = String(row[typeCol]);
+            if (val && val.toLowerCase() !== 'nan' && val !== 'undefined' && val !== 'null') {
+                typeCode = val;
+            }
+        }
+
+        // If no type found, search all columns for type patterns
+        if (!typeCode) {
+            for (let j = 0; j < Math.min(15, row.length); j++) {
                 const cell = String(row[j] || '');
-                // Look for patterns like "sf1992c2-Classic", "1BR", "2BR/2BA", etc.
-                if (cell.match(/sf\d+|[123]br|\d+\s*bed|\d+br\/\d+ba/i)) {
+                // Look for patterns like "sf1992c2-Classic", "1BR", "2BR/2BA", floor plan codes, etc.
+                if (cell.match(/sf\d{3,}|[123]\s*br|[123]\s*bed|\d+br\/\d+ba|[a-z]+\d+[a-z]*-|studio/i)) {
                     typeCode = cell;
                     break;
                 }
@@ -819,15 +828,35 @@ function parseRentRollData(excelData) {
         let rent = rentCol >= 0 ? parseFloat(String(row[rentCol]).replace(/[$,]/g, '')) || 0 : 0;
         let marketRent = marketCol >= 0 ? parseFloat(String(row[marketCol]).replace(/[$,]/g, '')) || 0 : 0;
 
-        if (rent === 0) {
-            // Search for rent values
-            for (let j = 0; j < row.length; j++) {
-                const val = parseFloat(String(row[j]).replace(/[$,]/g, ''));
-                if (val >= 500 && val <= 10000) {
-                    if (rent === 0) rent = val;
-                    else if (marketRent === 0) marketRent = val;
-                }
+        // Always search for rent values to ensure we find them
+        // Look for all values that could be rent amounts
+        const rentCandidates = [];
+        for (let j = 0; j < row.length; j++) {
+            const val = parseFloat(String(row[j]).replace(/[$,]/g, ''));
+            if (val >= 800 && val <= 15000) {
+                rentCandidates.push({ col: j, val: val });
             }
+        }
+
+        // If we have candidates, use them
+        if (rentCandidates.length > 0) {
+            // Sort by column index descending - rent is usually in later columns
+            rentCandidates.sort((a, b) => b.col - a.col);
+
+            // First candidate (rightmost) is likely the actual rent
+            if (rent === 0 || rent < 500) {
+                rent = rentCandidates[0].val;
+            }
+
+            // If we have multiple candidates, second might be market rent
+            if ((marketRent === 0 || marketRent < 500) && rentCandidates.length > 1) {
+                marketRent = rentCandidates[1].val;
+            }
+        }
+
+        // Ensure market rent has a value
+        if (marketRent === 0 && rent > 0) {
+            marketRent = rent;
         }
 
         // Convert type code to bedroom/bathroom type
@@ -845,6 +874,10 @@ function parseRentRollData(excelData) {
 
         // Only add if we have a unit number or rent
         if ((unit.unitNum && /^\d+$/.test(unit.unitNum)) || unit.rent > 0) {
+            // Debug log first few units
+            if (data.units.length < 3) {
+                console.log('Parsed unit:', unit);
+            }
             data.units.push(unit);
             data.summary.totalUnits++;
             const statusStr = String(unit.status).toLowerCase();
