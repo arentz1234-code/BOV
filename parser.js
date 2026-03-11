@@ -367,17 +367,24 @@ function extractOMData(fullText, pageTexts) {
     // Extract broker/contact information
     extractBrokerInfo(fullText, data);
 
-    // Extract parking info
-    const parkingMatch = fullText.match(/Parking[:\s]+([^\n]+)/i) ||
-                         fullText.match(/(\d+)\s*(?:parking\s*)?spaces?/i);
+    // Extract parking info - be very conservative to avoid garbage
+    // Only match simple patterns like "Surface parking", "Garage", "Covered spaces"
+    const parkingMatch = fullText.match(/Parking[:\s]*(\d+\s*(?:surface|covered|garage|carport)\s*(?:spaces?|parking)?)/i);
     if (parkingMatch) {
-        data.parking = parkingMatch[1] ? parkingMatch[1].trim() : parkingMatch[0].trim();
+        const parkingText = validateExtractedText(parkingMatch[1], 60);
+        if (parkingText) {
+            data.parking = parkingText;
+        }
     }
 
-    // Extract utilities info
-    const utilMatch = fullText.match(/Utilities[:\s]+([^\n]+)/i);
+    // Extract utilities info - be very conservative
+    // Only match patterns like "Tenant paid", "Owner paid", specific utility info
+    const utilMatch = fullText.match(/Utilities[:\s]*((?:Electric|Water|Gas|Sewer)[:\s]*(?:Tenant|Owner|Resident)\s*Paid)/i);
     if (utilMatch) {
-        data.utilities = utilMatch[1].trim();
+        const utilText = validateExtractedText(utilMatch[1], 80);
+        if (utilText) {
+            data.utilities = utilText;
+        }
     }
 
     // Extract year renovated
@@ -646,11 +653,46 @@ function extractMarketData(text) {
                         text.match(/\$([\d,]+)\s*(?:average|avg)?\s*household income/i);
     if (incomeMatch) marketData.avgHouseholdIncome = '$' + incomeMatch[1];
 
-    // Extract major employers
-    const employerMatch = text.match(/(?:Major|Top)\s*Employers?[^:]*:\s*([^\n]+)/i);
-    if (employerMatch) marketData.majorEmployers = employerMatch[1].trim();
+    // Extract major employers - leave blank, too error-prone from PDF extraction
+    // User can fill in manually or use known data
+    marketData.majorEmployers = '';
 
     return marketData;
+}
+
+// Validate extracted text - returns empty string if it looks like garbage
+function validateExtractedText(text, maxLength = 200) {
+    if (!text) return '';
+
+    // Trim and limit length
+    let cleaned = text.trim().substring(0, maxLength);
+
+    // Reject if it has too many spaced-out letters (like "R e n t C o m p" or "A Z U L")
+    if ((cleaned.match(/\s[A-Z]\s[A-Z]\s/g) || []).length >= 2) return '';
+    if ((cleaned.match(/[A-Z]\s[A-Z]\s[A-Z]\s[A-Z]/g) || []).length >= 1) return '';
+
+    // Reject if it has too many random numbers mixed in (like "2016 33 796 $2,065")
+    if ((cleaned.match(/\d+/g) || []).length > 4) return '';
+
+    // Reject if it has multiple dollar amounts (data table fragments)
+    if ((cleaned.match(/\$[\d,]+/g) || []).length > 1) return '';
+
+    // Reject if it contains obvious garbage patterns
+    if (cleaned.match(/[A-Z]{8,}/) || // Long string of caps (AZULLUXURY, NEWDEVELOPMENTS, etc.)
+        cleaned.match(/\$[\d,]+\s+\$[\d,]+/) || // Multiple dollar amounts together
+        cleaned.match(/\/\//) || // Comment markers
+        cleaned.match(/\d{4}\s+\d{2,3}\s+\d{3,4}/) || // Year followed by random numbers (table data)
+        cleaned.match(/•.*•/) || // Multiple bullet points (list items)
+        cleaned.match(/N\s*E\s*W|D\s*E\s*V|R\s*e\s*n\s*t/) || // Spaced out words
+        cleaned.length < 3) {
+        return '';
+    }
+
+    // Reject if more than 30% of text is numbers
+    const numDigits = (cleaned.match(/\d/g) || []).length;
+    if (numDigits / cleaned.length > 0.3) return '';
+
+    return cleaned;
 }
 
 function extractSalesComps(text) {
@@ -1173,25 +1215,29 @@ async function processDocuments() {
 function populateFormFromOM(data) {
     const numUnits = parseInt(data.numUnits) || 49;
 
+    // Helper to validate text and return empty string if garbage
+    const cleanText = (text, maxLen = 200) => validateExtractedText(text, maxLen);
+
     // === SECTION 1: Property Information ===
-    document.getElementById('propertyName').value = data.propertyName || 'Multifamily Property';
-    document.getElementById('propertyAddress').value = data.address || '';
-    document.getElementById('city').value = data.city || '';
-    document.getElementById('state').value = data.state || '';
-    document.getElementById('zipCode').value = data.zipCode || '';
-    document.getElementById('county').value = data.county || '';
-    document.getElementById('parcelId').value = data.parcelId || '';
+    document.getElementById('propertyName').value = cleanText(data.propertyName, 100) || '';
+    document.getElementById('propertyAddress').value = cleanText(data.address, 100) || '';
+    document.getElementById('city').value = cleanText(data.city, 50) || '';
+    document.getElementById('state').value = data.state || ''; // State is 2 chars, simple
+    document.getElementById('zipCode').value = data.zipCode || ''; // ZIP is numeric, simple
+    document.getElementById('county').value = cleanText(data.county, 50) || '';
+    document.getElementById('parcelId').value = data.parcelId || ''; // APN is alphanumeric, simple
     document.getElementById('propertyType').value = data.propertyType || 'Multifamily';
     document.getElementById('yearBuilt').value = data.yearBuilt || '';
     document.getElementById('yearRenovated').value = data.yearRenovated || '';
     document.getElementById('lotSize').value = data.lotSize || '';
     document.getElementById('buildingSize').value = data.buildingSize || '';
     document.getElementById('numUnits').value = data.numUnits || '';
-    document.getElementById('occupancyRate').value = data.occupancy || '95';
-    document.getElementById('constructionType').value = data.constructionType || 'Wood Frame with Stucco';
-    document.getElementById('parking').value = data.parking || `${numUnits * 1.5} Surface Spaces (1.5 per unit)`;
-    document.getElementById('utilities').value = data.utilities || 'Electric: Tenant Paid | Water/Sewer: Owner Paid | Gas: N/A';
-    document.getElementById('zoning').value = data.zoning || 'RM - Multifamily Residential';
+    document.getElementById('occupancyRate').value = data.occupancy || '';
+    // For these free-text fields, leave blank if extraction fails - user can fill in
+    document.getElementById('constructionType').value = cleanText(data.constructionType, 60) || '';
+    document.getElementById('parking').value = cleanText(data.parking, 80) || '';
+    document.getElementById('utilities').value = cleanText(data.utilities, 100) || '';
+    document.getElementById('zoning').value = cleanText(data.zoning, 50) || '';
 
     // === SECTION 2: Unit Mix ===
     if (data.unitMix && data.unitMix.length > 0) {
@@ -1203,39 +1249,43 @@ function populateFormFromOM(data) {
     }
 
     // === SECTION 3: Income & Expenses ===
+    // Only use extracted values, don't make up defaults
     const f = data.financials || {};
-    document.getElementById('otherIncome').value = f.otherIncome || Math.round(numUnits * 600);
-    document.getElementById('vacancyRate').value = f.vacancyRate || '5';
-    document.getElementById('realEstateTaxes').value = f.realEstateTaxes || Math.round(numUnits * 1200);
-    document.getElementById('insurance').value = f.insurance || Math.round(numUnits * 800);
-    document.getElementById('managementFeePercent').value = f.managementPercent || '3';
-    document.getElementById('repairsMaintenance').value = f.repairsMaintenance || Math.round(numUnits * 500);
-    document.getElementById('utilitiesExpense').value = f.utilities || Math.round(numUnits * 400);
-    document.getElementById('payroll').value = f.payroll || Math.round(numUnits * 1500);
-    document.getElementById('contractServices').value = f.contractServices || Math.round(numUnits * 300);
-    document.getElementById('adminExpense').value = f.adminExpense || Math.round(numUnits * 200);
-    document.getElementById('marketing').value = f.marketing || Math.round(numUnits * 150);
-    document.getElementById('otherExpenses').value = f.otherExpenses || Math.round(numUnits * 100);
-    document.getElementById('reservesPerUnit').value = f.reservesPerUnit || '250';
+    document.getElementById('otherIncome').value = f.otherIncome || '';
+    document.getElementById('vacancyRate').value = f.vacancyRate || '';
+    document.getElementById('realEstateTaxes').value = f.realEstateTaxes || '';
+    document.getElementById('insurance').value = f.insurance || '';
+    document.getElementById('managementFeePercent').value = f.managementPercent || '';
+    document.getElementById('repairsMaintenance').value = f.repairsMaintenance || '';
+    document.getElementById('utilitiesExpense').value = f.utilities || '';
+    document.getElementById('payroll').value = f.payroll || '';
+    document.getElementById('contractServices').value = f.contractServices || '';
+    document.getElementById('adminExpense').value = f.adminExpense || '';
+    document.getElementById('marketing').value = f.marketing || '';
+    document.getElementById('otherExpenses').value = f.otherExpenses || '';
+    document.getElementById('reservesPerUnit').value = f.reservesPerUnit || '';
 
     // === SECTION 4: Physical Condition ===
-    document.getElementById('recentCapex').value = data.recentCapex || 'New roofs (2022), HVAC upgrades (2021), exterior paint (2023)';
-    document.getElementById('deferredMaintenance').value = data.deferredMaintenance || 'Minor - parking lot restriping needed';
-    document.getElementById('renovationCostPerUnit').value = data.renovationCostPerUnit || '8500';
-    document.getElementById('unitsToRenovate').value = data.unitsToRenovate || Math.round(numUnits * 0.3);
+    // Leave these blank if not extracted - user should fill in
+    document.getElementById('recentCapex').value = cleanText(data.recentCapex, 200) || '';
+    document.getElementById('deferredMaintenance').value = cleanText(data.deferredMaintenance, 150) || '';
+    document.getElementById('renovationCostPerUnit').value = data.renovationCostPerUnit || '';
+    document.getElementById('unitsToRenovate').value = data.unitsToRenovate || '';
 
     // === SECTION 5: Market Analysis ===
-    document.getElementById('submarket').value = data.city || 'Primary Submarket';
+    // For market data, leave fields blank if not cleanly extracted - don't use defaults
+    document.getElementById('submarket').value = cleanText(data.city, 50) || '';
     document.getElementById('msa').value = data.msa || (data.city ? `${data.city} MSA` : '');
-    document.getElementById('msaPopulation').value = data.marketData?.msaPopulation || '500,000';
-    document.getElementById('populationGrowth').value = data.marketData?.populationGrowth || '2.5';
-    document.getElementById('majorEmployers').value = data.marketData?.majorEmployers || 'Healthcare, Government, Education, Technology';
-    document.getElementById('submarketVacancy').value = data.marketData?.submarketVacancy || '5.2';
-    document.getElementById('rentGrowthYoY').value = data.marketData?.rentGrowthYoY || '3.5';
-    document.getElementById('newSupply').value = data.marketData?.newSupply || '500';
-    document.getElementById('avgHouseholdIncome').value = data.marketData?.avgHouseholdIncome || '$65,000';
-    document.getElementById('marketCapRateLow').value = data.marketData?.capRateLow || '5.25';
-    document.getElementById('marketCapRateHigh').value = data.marketData?.capRateHigh || '6.00';
+    document.getElementById('msaPopulation').value = data.marketData?.msaPopulation || '';
+    document.getElementById('populationGrowth').value = data.marketData?.populationGrowth || '';
+    // Major employers is very prone to garbage - leave blank
+    document.getElementById('majorEmployers').value = '';
+    document.getElementById('submarketVacancy').value = data.marketData?.submarketVacancy || '';
+    document.getElementById('rentGrowthYoY').value = data.marketData?.rentGrowthYoY || '';
+    document.getElementById('newSupply').value = data.marketData?.newSupply || '';
+    document.getElementById('avgHouseholdIncome').value = cleanText(data.marketData?.avgHouseholdIncome, 30) || '';
+    document.getElementById('marketCapRateLow').value = data.marketData?.capRateLow || '';
+    document.getElementById('marketCapRateHigh').value = data.marketData?.capRateHigh || '';
 
     // === SECTION 6: Comparable Sales ===
     populateDefaultComps(data);
@@ -1243,11 +1293,8 @@ function populateFormFromOM(data) {
     // === SECTION 7: Rent Comparables ===
     populateDefaultRentComps(data);
 
-    // Comp narrative
-    document.getElementById('compNarrative').value = data.compNarrative ||
-        `The subject property compares favorably to recent comparable sales in the ${data.city || 'local'} market. ` +
-        `After adjusting for age, condition, unit mix, and location, the subject should trade within the indicated value range. ` +
-        `The property benefits from strong occupancy and stable operations.`;
+    // Comp narrative - leave blank for user to fill in
+    document.getElementById('compNarrative').value = cleanText(data.compNarrative, 500) || '';
 
     // === SECTION 8: Assumable Debt ===
     document.getElementById('hasAssumableDebt').value = data.hasDebt ? 'yes' : 'no';
@@ -1262,50 +1309,30 @@ function populateFormFromOM(data) {
     }
 
     // === SECTION 9: Seller & Broker Info ===
-    document.getElementById('sellerTimeline').value = data.sellerTimeline || '60-90 days';
-    document.getElementById('pricingExpectation').value = data.pricingExpectation || 'Market Value';
-    document.getElementById('dealStructure').value = data.dealStructure || 'All Cash or New Financing';
+    // Leave these blank for user to fill in
+    document.getElementById('sellerTimeline').value = data.sellerTimeline || '';
+    document.getElementById('pricingExpectation').value = data.pricingExpectation || '';
+    document.getElementById('dealStructure').value = data.dealStructure || '';
 
-    // Use extracted broker info or defaults
-    const brokerName = data.brokerName || 'Andrew Rentz';
-    const brokerTitle = data.brokerTitle || 'Investment Sales Advisor';
-    const brokerageFirm = data.brokerageFirm || 'Rentz Commercial Real Estate';
-    const brokerPhone = data.brokerPhone || '';
-    const brokerEmail = data.brokerEmail || '';
-
-    document.getElementById('brokerName').value = brokerName;
-    document.getElementById('brokerLicense').value = data.brokerLicense || '';
-    document.getElementById('brokerageFirm').value = brokerageFirm;
-    document.getElementById('brokerageAddress').value = data.brokerageAddress || '';
-    document.getElementById('clientName').value = data.clientName || 'Property Owner';
-
-    // Generate broker bio from extracted info
-    let brokerBio = data.brokerBio || '';
-    if (!brokerBio) {
-        brokerBio = `${brokerName} is a ${brokerTitle} at ${brokerageFirm}, specializing in multifamily investment properties. `;
-        if (data.city) {
-            brokerBio += `With extensive experience in the ${data.city} market, `;
-        } else {
-            brokerBio += `With extensive market experience, `;
-        }
-        brokerBio += `${brokerName.split(' ')[0]} provides expert guidance on property valuation, marketing, and transaction execution for clients seeking to maximize value in the multifamily sector.`;
-        if (brokerPhone) brokerBio += `\n\nDirect: ${brokerPhone}`;
-        if (brokerEmail) brokerBio += `\nEmail: ${brokerEmail}`;
-    }
-    document.getElementById('brokerBio').value = brokerBio;
+    // Broker info - leave blank for user to fill in (don't extract from OM, it's the seller's broker)
+    document.getElementById('brokerName').value = '';
+    document.getElementById('brokerLicense').value = '';
+    document.getElementById('brokerageFirm').value = '';
+    document.getElementById('brokerageAddress').value = '';
+    document.getElementById('clientName').value = '';
+    document.getElementById('brokerBio').value = '';
 
     // === SECTION 10: Valuation Parameters ===
-    document.getElementById('appliedCapRate').value = data.appliedCapRate || '5.50';
-    document.getElementById('valueLowAdj').value = data.valueLowAdj || '-5';
-    document.getElementById('valueHighAdj').value = data.valueHighAdj || '5';
+    // Leave blank for user to fill in
+    document.getElementById('appliedCapRate').value = data.appliedCapRate || '';
+    document.getElementById('valueLowAdj').value = data.valueLowAdj || '';
+    document.getElementById('valueHighAdj').value = data.valueHighAdj || '';
 
     // === SECTION 11: Marketing Strategy ===
-    document.getElementById('marketingApproach').value = data.marketingApproach ||
-        'Targeted marketing campaign to qualified multifamily investors including institutional buyers, private equity, and 1031 exchange buyers.';
-    document.getElementById('targetBuyer').value = data.targetBuyer ||
-        'Private investors, family offices, regional operators, and institutional buyers seeking stable cash flow with value-add potential.';
-    document.getElementById('keySellingPoints').value = data.keySellingPoints ||
-        '• Strong in-place cash flow\n• Value-add opportunity through unit renovations\n• Excellent location with strong demographics\n• Well-maintained property with recent capital improvements\n• Assumable financing available (if applicable)';
+    // Leave blank for user to fill in
+    document.getElementById('marketingApproach').value = cleanText(data.marketingApproach, 300) || '';
+    document.getElementById('targetBuyer').value = cleanText(data.targetBuyer, 200) || '';
+    document.getElementById('keySellingPoints').value = cleanText(data.keySellingPoints, 500) || '';
 }
 
 function populateDefaultComps(data) {
