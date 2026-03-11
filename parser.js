@@ -310,52 +310,125 @@ function extractOMData(fullText, pageTexts) {
 }
 
 function extractBrokerInfo(text, data) {
-    // Look for broker/advisor names - typically "FirstName LastName" followed by title
+    console.log('Extracting broker info from OM...');
+
+    // Normalize text for better matching
+    const normalizedText = text.replace(/\s+/g, ' ');
+
+    // Look for broker/advisor names with titles
     const brokerPatterns = [
-        /(?:Listed by|Contact|Advisor|Broker)[:\s]*([A-Z][a-z]+\s+[A-Z][a-z]+)/i,
-        /([A-Z][a-z]+\s+[A-Z][a-z]+)\s*(?:Senior|Vice|Director|Managing|Principal|Associate)/i,
-        /([A-Z][a-z]+\s+[A-Z][a-z]+)\s*\n\s*(?:Senior|Vice|Director|Managing)/i
+        // Name followed by title
+        /([A-Z][a-z]+\s+(?:[A-Z]\.?\s+)?[A-Z][a-z]+)\s*,?\s*(?:CCIM|CPM|MAI|SIOR|Senior\s*Vice\s*President|Vice\s*President|SVP|VP|Director|Managing\s*Director|Principal|Associate|Broker|Agent|Advisor)/gi,
+        // "Contact:" or "Listed by:" followed by name
+        /(?:Contact|Listed\s*by|Exclusive\s*Agent|Investment\s*Sales)[:\s]+([A-Z][a-z]+\s+(?:[A-Z]\.?\s+)?[A-Z][a-z]+)/i,
+        // Name with phone/email nearby
+        /([A-Z][a-z]+\s+[A-Z][a-z]+)\s*[\n\r]+\s*(?:\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}|[a-z]+@)/i,
+        // "For more information" section
+        /(?:For\s*(?:more\s*)?information|Questions)[:\s]+.*?([A-Z][a-z]+\s+[A-Z][a-z]+)/i
     ];
 
     for (const pattern of brokerPatterns) {
-        const match = text.match(pattern);
-        if (match && match[1]) {
-            data.brokerName = match[1].trim();
-            break;
+        const matches = normalizedText.match(pattern);
+        if (matches && matches[1]) {
+            const name = matches[1].trim();
+            // Filter out common false positives
+            if (!name.match(/^(The|One|Two|Three|Four|Five|Real|Estate|Floor|Unit|Suite|Year|Gross|Net|Total)/i)) {
+                data.brokerName = name;
+                console.log('Found broker name:', name);
+                break;
+            }
         }
     }
 
-    // Extract phone number
-    const phoneMatch = text.match(/(?:Phone|Tel|Mobile|Direct|O|M|D)[:\s]*\(?(\d{3})\)?[\s.-]?(\d{3})[\s.-]?(\d{4})/i) ||
-                       text.match(/\(?(\d{3})\)?[\s.-](\d{3})[\s.-](\d{4})/);
-    if (phoneMatch) {
-        data.brokerPhone = `(${phoneMatch[1]}) ${phoneMatch[2]}-${phoneMatch[3]}`;
+    // Extract ALL phone numbers and use the first one
+    const phoneMatches = text.match(/\(?(\d{3})\)?[\s.-]?(\d{3})[\s.-]?(\d{4})/g);
+    if (phoneMatches && phoneMatches.length > 0) {
+        // Get the last phone number (often the broker's direct line is at the end)
+        const lastPhone = phoneMatches[phoneMatches.length - 1];
+        const parts = lastPhone.match(/\(?(\d{3})\)?[\s.-]?(\d{3})[\s.-]?(\d{4})/);
+        if (parts) {
+            data.brokerPhone = `(${parts[1]}) ${parts[2]}-${parts[3]}`;
+            console.log('Found phone:', data.brokerPhone);
+        }
     }
 
-    // Extract email
-    const emailMatch = text.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
-    if (emailMatch) {
-        data.brokerEmail = emailMatch[1].toLowerCase();
+    // Extract ALL emails
+    const emailMatches = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi);
+    if (emailMatches && emailMatches.length > 0) {
+        // Filter out generic emails and get the first broker email
+        const brokerEmail = emailMatches.find(e =>
+            !e.toLowerCase().includes('info@') &&
+            !e.toLowerCase().includes('contact@') &&
+            !e.toLowerCase().includes('support@')
+        ) || emailMatches[0];
+        data.brokerEmail = brokerEmail.toLowerCase();
+        console.log('Found email:', data.brokerEmail);
     }
 
-    // Extract brokerage firm - look for common patterns
+    // Extract brokerage firm - comprehensive list
     const firmPatterns = [
-        /(?:Marcus\s*&?\s*Millichap|CBRE|JLL|Cushman\s*&?\s*Wakefield|Berkadia|Walker\s*&?\s*Dunlop|Newmark|Colliers|Northmarq|Matthews)/i,
-        /(?:Real Estate|Realty|Advisors|Capital|Partners|Group|Properties)\s*(?:LLC|Inc|LP|Corp)?/i
+        /Marcus\s*&?\s*Millichap/i,
+        /CBRE/i,
+        /JLL|Jones\s*Lang\s*LaSalle/i,
+        /Cushman\s*&?\s*Wakefield/i,
+        /Berkadia/i,
+        /Walker\s*&?\s*Dunlop/i,
+        /Newmark/i,
+        /Colliers/i,
+        /Northmarq/i,
+        /Matthews\s*(?:Real\s*Estate)?/i,
+        /Keller\s*Williams/i,
+        /RE\/MAX/i,
+        /Century\s*21/i,
+        /Coldwell\s*Banker/i,
+        /SVN|Sperry\s*Van\s*Ness/i,
+        /NAI\s*[A-Za-z]+/i,
+        /Lee\s*&?\s*Associates/i,
+        /Avison\s*Young/i,
+        /Kidder\s*Mathews/i,
+        /Transwestern/i,
+        /Franklin\s*Street/i,
+        /Bull\s*Realty/i,
+        /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s*(?:Commercial|Real\s*Estate|Realty|Advisors|Capital|Partners|Group|Properties|Investments)\s*(?:LLC|Inc|LP|Corp|Company)?/i
     ];
 
     for (const pattern of firmPatterns) {
         const match = text.match(pattern);
         if (match) {
             data.brokerageFirm = match[0].trim();
+            console.log('Found firm:', data.brokerageFirm);
             break;
         }
     }
 
-    // Extract license number
-    const licenseMatch = text.match(/(?:License|Lic)[:\s#]*([A-Z]{0,2}\d{5,10})/i);
-    if (licenseMatch) {
-        data.brokerLicense = licenseMatch[1];
+    // Extract license number - various state formats
+    const licensePatterns = [
+        /(?:License|Lic|BRE|DRE|CAL\s*BRE)[:\s#]*([A-Z]{0,2}\s*\d{5,10})/i,
+        /(?:FL|CA|TX|NY|AZ|GA|NC|TN|CO)\s*(?:License|Lic)?[:\s#]*(\d{5,10})/i,
+        /#\s*(\d{6,10})/
+    ];
+
+    for (const pattern of licensePatterns) {
+        const match = text.match(pattern);
+        if (match && match[1]) {
+            data.brokerLicense = match[1].trim();
+            console.log('Found license:', data.brokerLicense);
+            break;
+        }
+    }
+
+    // Extract broker title
+    const titlePatterns = [
+        /(?:Senior\s*Vice\s*President|Vice\s*President|SVP|VP|Managing\s*Director|Director|Principal|Senior\s*Associate|Associate|Broker|Investment\s*(?:Sales\s*)?(?:Specialist|Advisor|Agent))/i
+    ];
+
+    for (const pattern of titlePatterns) {
+        const match = text.match(pattern);
+        if (match) {
+            data.brokerTitle = match[0].trim();
+            console.log('Found title:', data.brokerTitle);
+            break;
+        }
     }
 }
 
@@ -854,13 +927,34 @@ function populateFormFromOM(data) {
     document.getElementById('sellerTimeline').value = data.sellerTimeline || '60-90 days';
     document.getElementById('pricingExpectation').value = data.pricingExpectation || 'Market Value';
     document.getElementById('dealStructure').value = data.dealStructure || 'All Cash or New Financing';
-    document.getElementById('brokerName').value = data.brokerName || 'Andrew Rentz';
+
+    // Use extracted broker info or defaults
+    const brokerName = data.brokerName || 'Andrew Rentz';
+    const brokerTitle = data.brokerTitle || 'Investment Sales Advisor';
+    const brokerageFirm = data.brokerageFirm || 'Rentz Commercial Real Estate';
+    const brokerPhone = data.brokerPhone || '';
+    const brokerEmail = data.brokerEmail || '';
+
+    document.getElementById('brokerName').value = brokerName;
     document.getElementById('brokerLicense').value = data.brokerLicense || '';
-    document.getElementById('brokerageFirm').value = data.brokerageFirm || 'Rentz Commercial Real Estate';
+    document.getElementById('brokerageFirm').value = brokerageFirm;
     document.getElementById('brokerageAddress').value = data.brokerageAddress || '';
     document.getElementById('clientName').value = data.clientName || 'Property Owner';
-    document.getElementById('brokerBio').value = data.brokerBio ||
-        'Andrew Rentz is a licensed commercial real estate professional specializing in multifamily investment properties. With extensive experience in the local market, Andrew provides expert guidance on property valuation, marketing, and transaction execution for clients seeking to maximize value in the multifamily sector.';
+
+    // Generate broker bio from extracted info
+    let brokerBio = data.brokerBio || '';
+    if (!brokerBio) {
+        brokerBio = `${brokerName} is a ${brokerTitle} at ${brokerageFirm}, specializing in multifamily investment properties. `;
+        if (data.city) {
+            brokerBio += `With extensive experience in the ${data.city} market, `;
+        } else {
+            brokerBio += `With extensive market experience, `;
+        }
+        brokerBio += `${brokerName.split(' ')[0]} provides expert guidance on property valuation, marketing, and transaction execution for clients seeking to maximize value in the multifamily sector.`;
+        if (brokerPhone) brokerBio += `\n\nDirect: ${brokerPhone}`;
+        if (brokerEmail) brokerBio += `\nEmail: ${brokerEmail}`;
+    }
+    document.getElementById('brokerBio').value = brokerBio;
 
     // === SECTION 10: Valuation Parameters ===
     document.getElementById('appliedCapRate').value = data.appliedCapRate || '5.50';
