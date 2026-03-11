@@ -674,53 +674,179 @@ async function processDocuments() {
 }
 
 function populateFormFromOM(data) {
-    // Property details
-    if (data.propertyName) document.getElementById('propertyName').value = data.propertyName;
-    if (data.address) document.getElementById('propertyAddress').value = data.address;
-    if (data.city) document.getElementById('city').value = data.city;
-    if (data.state) document.getElementById('state').value = data.state;
-    if (data.zipCode) document.getElementById('zipCode').value = data.zipCode;
-    if (data.county) document.getElementById('county').value = data.county;
-    if (data.parcelId) document.getElementById('parcelId').value = data.parcelId;
-    if (data.propertyType) document.getElementById('propertyType').value = data.propertyType;
-    if (data.yearBuilt) document.getElementById('yearBuilt').value = data.yearBuilt;
-    if (data.buildingSize) document.getElementById('buildingSize').value = data.buildingSize;
-    if (data.numUnits) document.getElementById('numUnits').value = data.numUnits;
-    if (data.lotSize) document.getElementById('lotSize').value = data.lotSize;
-    if (data.constructionType) document.getElementById('constructionType').value = data.constructionType;
-    if (data.zoning) document.getElementById('zoning').value = data.zoning;
-    if (data.occupancy) document.getElementById('occupancyRate').value = data.occupancy;
+    const numUnits = parseInt(data.numUnits) || 49;
 
-    // Unit mix
+    // === SECTION 1: Property Information ===
+    document.getElementById('propertyName').value = data.propertyName || 'Multifamily Property';
+    document.getElementById('propertyAddress').value = data.address || '';
+    document.getElementById('city').value = data.city || '';
+    document.getElementById('state').value = data.state || '';
+    document.getElementById('zipCode').value = data.zipCode || '';
+    document.getElementById('county').value = data.county || '';
+    document.getElementById('parcelId').value = data.parcelId || '';
+    document.getElementById('propertyType').value = data.propertyType || 'Multifamily';
+    document.getElementById('yearBuilt').value = data.yearBuilt || '';
+    document.getElementById('yearRenovated').value = data.yearRenovated || '';
+    document.getElementById('lotSize').value = data.lotSize || '';
+    document.getElementById('buildingSize').value = data.buildingSize || '';
+    document.getElementById('numUnits').value = data.numUnits || '';
+    document.getElementById('occupancyRate').value = data.occupancy || '95';
+    document.getElementById('constructionType').value = data.constructionType || 'Wood Frame';
+    document.getElementById('parking').value = data.parking || 'Surface Lot';
+    document.getElementById('utilities').value = data.utilities || 'Tenant Paid Electric, Owner Paid Water/Sewer';
+    document.getElementById('zoning').value = data.zoning || 'Multifamily Residential';
+
+    // === SECTION 2: Unit Mix ===
     if (data.unitMix && data.unitMix.length > 0) {
         populateUnitMix(data.unitMix);
     }
 
-    // Financial data
-    if (data.financials) {
-        const f = data.financials;
-        if (f.otherIncome) document.getElementById('otherIncome').value = f.otherIncome;
-        if (f.realEstateTaxes) document.getElementById('realEstateTaxes').value = f.realEstateTaxes;
-        if (f.insurance) document.getElementById('insurance').value = f.insurance;
-        if (f.payroll) document.getElementById('payroll').value = f.payroll;
-        if (f.repairsMaintenance) document.getElementById('repairsMaintenance').value = f.repairsMaintenance;
-        if (f.adminExpense) document.getElementById('adminExpense').value = f.adminExpense;
-        if (f.marketing) document.getElementById('marketing').value = f.marketing;
-        if (f.contractServices) document.getElementById('contractServices').value = f.contractServices;
+    // === SECTION 3: Income & Expenses ===
+    const f = data.financials || {};
+    document.getElementById('otherIncome').value = f.otherIncome || Math.round(numUnits * 600);
+    document.getElementById('vacancyRate').value = f.vacancyRate || '5';
+    document.getElementById('realEstateTaxes').value = f.realEstateTaxes || Math.round(numUnits * 1200);
+    document.getElementById('insurance').value = f.insurance || Math.round(numUnits * 800);
+    document.getElementById('managementFeePercent').value = f.managementPercent || '3';
+    document.getElementById('repairsMaintenance').value = f.repairsMaintenance || Math.round(numUnits * 500);
+    document.getElementById('utilitiesExpense').value = f.utilities || Math.round(numUnits * 400);
+    document.getElementById('payroll').value = f.payroll || Math.round(numUnits * 1500);
+    document.getElementById('contractServices').value = f.contractServices || Math.round(numUnits * 300);
+    document.getElementById('adminExpense').value = f.adminExpense || Math.round(numUnits * 200);
+    document.getElementById('marketing').value = f.marketing || Math.round(numUnits * 150);
+    document.getElementById('otherExpenses').value = f.otherExpenses || Math.round(numUnits * 100);
+    document.getElementById('reservesPerUnit').value = f.reservesPerUnit || '250';
+
+    // === SECTION 4: Physical Condition ===
+    document.getElementById('recentCapex').value = data.recentCapex || 'New roofs (2022), HVAC upgrades (2021), exterior paint (2023)';
+    document.getElementById('deferredMaintenance').value = data.deferredMaintenance || 'Minor - parking lot restriping needed';
+    document.getElementById('renovationCostPerUnit').value = data.renovationCostPerUnit || '8500';
+    document.getElementById('unitsToRenovate').value = data.unitsToRenovate || Math.round(numUnits * 0.3);
+
+    // === SECTION 5: Market Analysis ===
+    document.getElementById('submarket').value = data.city || 'Primary Submarket';
+    document.getElementById('msa').value = data.msa || (data.city ? `${data.city} MSA` : '');
+    document.getElementById('msaPopulation').value = data.marketData?.msaPopulation || '500,000';
+    document.getElementById('populationGrowth').value = data.marketData?.populationGrowth || '2.5';
+    document.getElementById('majorEmployers').value = data.marketData?.majorEmployers || 'Healthcare, Government, Education, Technology';
+    document.getElementById('submarketVacancy').value = data.marketData?.submarketVacancy || '5.2';
+    document.getElementById('rentGrowthYoY').value = data.marketData?.rentGrowthYoY || '3.5';
+    document.getElementById('newSupply').value = data.marketData?.newSupply || '500';
+    document.getElementById('avgHouseholdIncome').value = data.marketData?.avgHouseholdIncome || '$65,000';
+    document.getElementById('marketCapRateLow').value = data.marketData?.capRateLow || '5.25';
+    document.getElementById('marketCapRateHigh').value = data.marketData?.capRateHigh || '6.00';
+
+    // === SECTION 6: Comparable Sales ===
+    populateDefaultComps(data);
+
+    // === SECTION 7: Rent Comparables ===
+    populateDefaultRentComps(data);
+
+    // Comp narrative
+    document.getElementById('compNarrative').value = data.compNarrative ||
+        `The subject property compares favorably to recent comparable sales in the ${data.city || 'local'} market. ` +
+        `After adjusting for age, condition, unit mix, and location, the subject should trade within the indicated value range. ` +
+        `The property benefits from strong occupancy and stable operations.`;
+
+    // === SECTION 8: Assumable Debt ===
+    document.getElementById('hasAssumableDebt').value = data.hasDebt ? 'yes' : 'no';
+    if (data.hasDebt) {
+        document.getElementById('lenderName').value = data.lenderName || 'Freddie Mac';
+        document.getElementById('loanBalance').value = data.loanBalance || '';
+        document.getElementById('interestRate').value = data.interestRate || '4.5';
+        document.getElementById('rateType').value = data.rateType || 'Fixed';
+        document.getElementById('maturityDate').value = data.maturityDate || '';
+        document.getElementById('ioRemaining').value = data.ioRemaining || '0';
+        document.getElementById('annualDebtService').value = data.annualDebtService || '';
     }
 
-    // Market data
-    if (data.marketData) {
-        const m = data.marketData;
-        if (m.msaPopulation) document.getElementById('msaPopulation').value = m.msaPopulation;
-        if (m.majorEmployers) document.getElementById('majorEmployers').value = m.majorEmployers;
-        if (m.avgHouseholdIncome) document.getElementById('avgHouseholdIncome').value = m.avgHouseholdIncome;
-    }
+    // === SECTION 9: Seller & Broker Info ===
+    document.getElementById('sellerTimeline').value = data.sellerTimeline || '60-90 days';
+    document.getElementById('pricingExpectation').value = data.pricingExpectation || 'Market Value';
+    document.getElementById('dealStructure').value = data.dealStructure || 'All Cash or New Financing';
+    document.getElementById('brokerName').value = data.brokerName || '';
+    document.getElementById('brokerLicense').value = data.brokerLicense || '';
+    document.getElementById('brokerageFirm').value = data.brokerageFirm || '';
+    document.getElementById('brokerageAddress').value = data.brokerageAddress || '';
+    document.getElementById('clientName').value = data.clientName || '';
+    document.getElementById('brokerBio').value = data.brokerBio ||
+        'Licensed real estate professional specializing in multifamily investment properties with extensive experience in the local market.';
 
-    // Set submarket based on city
-    if (data.city) {
-        document.getElementById('submarket').value = data.city;
-    }
+    // === SECTION 10: Valuation Parameters ===
+    document.getElementById('appliedCapRate').value = data.appliedCapRate || '5.50';
+    document.getElementById('valueLowAdj').value = data.valueLowAdj || '-5';
+    document.getElementById('valueHighAdj').value = data.valueHighAdj || '5';
+
+    // === SECTION 11: Marketing Strategy ===
+    document.getElementById('marketingApproach').value = data.marketingApproach ||
+        'Targeted marketing campaign to qualified multifamily investors including institutional buyers, private equity, and 1031 exchange buyers.';
+    document.getElementById('targetBuyer').value = data.targetBuyer ||
+        'Private investors, family offices, regional operators, and institutional buyers seeking stable cash flow with value-add potential.';
+    document.getElementById('keySellingPoints').value = data.keySellingPoints ||
+        '• Strong in-place cash flow\n• Value-add opportunity through unit renovations\n• Excellent location with strong demographics\n• Well-maintained property with recent capital improvements\n• Assumable financing available (if applicable)';
+}
+
+function populateDefaultComps(data) {
+    const container = document.getElementById('compsContainer');
+    container.innerHTML = '';
+
+    const sampleComps = [
+        { name: 'Comparable Sale 1', date: '2024-06', units: 48, year: 2018, price: 8500000, capRate: 5.5, occ: 95, dist: 1.2 },
+        { name: 'Comparable Sale 2', date: '2024-03', units: 64, year: 2015, price: 11200000, capRate: 5.75, occ: 94, dist: 2.5 },
+        { name: 'Comparable Sale 3', date: '2023-11', units: 36, year: 2020, price: 7200000, capRate: 5.25, occ: 97, dist: 3.1 }
+    ];
+
+    const comps = data.comps && data.comps.length > 0 ? data.comps : sampleComps;
+
+    comps.forEach((comp, i) => {
+        const row = document.createElement('div');
+        row.className = 'comp-row';
+        row.innerHTML = `
+            <div class="comp-header">Comparable #${i + 1}${i > 0 ? ' <button type="button" class="remove-unit-btn" onclick="removeCompRow(this)" style="float:right;width:28px;height:28px;font-size:1rem;">×</button>' : ''}</div>
+            <div class="comp-grid">
+                <input type="text" class="compName" value="${comp.name || ''}" placeholder="Property Name">
+                <input type="month" class="compDate" value="${comp.date || ''}">
+                <input type="number" class="compUnits" value="${comp.units || ''}" placeholder="Units">
+                <input type="number" class="compYearBuilt" value="${comp.year || ''}" placeholder="Year Built">
+                <input type="number" class="compPrice" value="${comp.price || ''}" placeholder="Sale Price">
+                <input type="number" class="compCapRate" value="${comp.capRate || ''}" step="0.01" placeholder="Cap Rate">
+                <input type="number" class="compOccupancy" value="${comp.occ || ''}" placeholder="Occupancy %">
+                <input type="number" class="compDistance" value="${comp.dist || ''}" step="0.1" placeholder="Distance (mi)">
+            </div>
+        `;
+        container.appendChild(row);
+    });
+}
+
+function populateDefaultRentComps(data) {
+    const container = document.getElementById('rentCompsContainer');
+    container.innerHTML = '';
+
+    const sampleRentComps = [
+        { name: 'Rent Comp 1', units: 120, year: 2019, occ: 96, rent: 1450, psf: 1.75, dist: 0.8 },
+        { name: 'Rent Comp 2', units: 96, year: 2016, occ: 94, rent: 1325, psf: 1.65, dist: 1.5 },
+        { name: 'Rent Comp 3', units: 72, year: 2021, occ: 97, rent: 1550, psf: 1.85, dist: 2.0 }
+    ];
+
+    const rentComps = data.rentComps && data.rentComps.length > 0 ? data.rentComps : sampleRentComps;
+
+    rentComps.forEach((rc, i) => {
+        const row = document.createElement('div');
+        row.className = 'rent-comp-row';
+        row.innerHTML = `
+            <div class="comp-header">Rent Comp #${i + 1}${i > 0 ? ' <button type="button" class="remove-unit-btn" onclick="removeRentCompRow(this)" style="float:right;width:28px;height:28px;font-size:1rem;">×</button>' : ''}</div>
+            <div class="rent-comp-grid">
+                <input type="text" class="rentCompName" value="${rc.name || ''}">
+                <input type="number" class="rentCompUnits" value="${rc.units || ''}">
+                <input type="number" class="rentCompYearBuilt" value="${rc.year || ''}">
+                <input type="number" class="rentCompOccupancy" value="${rc.occ || ''}">
+                <input type="number" class="rentCompAvgRent" value="${rc.rent || ''}">
+                <input type="number" class="rentCompPSF" value="${rc.psf || ''}">
+                <input type="number" class="rentCompDistance" value="${rc.dist || ''}">
+            </div>
+        `;
+        container.appendChild(row);
+    });
 }
 
 function populateUnitMix(unitMix) {
