@@ -875,22 +875,30 @@ function parseRentRollData(excelData) {
         const row = rows[i];
         if (!row || row.length === 0) continue;
 
+        // Check if this row has any meaningful data (not all null/empty)
+        const hasData = row.some(cell => {
+            const val = String(cell || '').toLowerCase();
+            return val && val !== 'null' && val !== 'nan' && val !== 'undefined' && val !== '';
+        });
+        if (!hasData) continue;
+
         // Skip rows that look like headers or totals
         const firstCell = String(row[0] || '').toLowerCase();
         if (firstCell.includes('total') || firstCell.includes('average') || firstCell.includes('summary')) continue;
 
-        // Get unit number - could be in first non-empty column
-        let unitNum = unitCol >= 0 ? row[unitCol] : row[0];
-        if (!unitNum || String(unitNum).toLowerCase() === 'nan') {
-            // Try to find first numeric-looking cell
-            for (let j = 0; j < Math.min(5, row.length); j++) {
-                const cell = String(row[j] || '');
-                if (/^\d+$/.test(cell.replace('.0', ''))) {
-                    unitNum = cell;
-                    break;
-                }
+        // Get unit number - look for 2-4 digit number in first few columns
+        let unitNum = '';
+        for (let j = 0; j < Math.min(5, row.length); j++) {
+            const cell = String(row[j] || '').replace('.0', '');
+            // Unit numbers are typically 2-4 digits (e.g., 101, 102, 1001)
+            if (/^\d{2,4}$/.test(cell)) {
+                unitNum = cell;
+                break;
             }
         }
+
+        // Skip rows without a valid unit number
+        if (!unitNum) continue;
 
         // Get unit type code - search multiple columns
         let typeCode = '';
