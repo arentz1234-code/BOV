@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Broker Opinion of Value Generator</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- PDF.js for PDF parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- SheetJS for Excel parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Broker Opinion of Value</h1>
+            <p class="subtitle">Professional BOV Document Generator</p>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="upload">Upload Documents</button>
+            <button class="tab-btn" data-tab="input">Edit Data</button>
+            <button class="tab-btn" data-tab="preview">Preview BOV</button>
+        </div>
+
+        <!-- Upload Tab -->
+        <div id="upload" class="tab-content active">
+            <section class="form-section">
+                <h2>Upload Your Documents</h2>
+                <p class="section-description">Upload your Offering Memorandum, Rent Roll, and T12 to auto-populate the BOV form. Supported formats: PDF, Excel (.xlsx, .xls)</p>
+
+                <div class="upload-grid">
+                    <div class="upload-zone" id="omUploadZone">
+                        <div class="upload-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="12" y1="18" x2="12" y2="12"></line>
+                                <line x1="9" y1="15" x2="15" y2="15"></line>
+                            </svg>
+                        </div>
+                        <h3>Offering Memorandum</h3>
+                        <p>Drop PDF here or click to browse</p>
+                        <input type="file" id="omFile" accept=".pdf" hidden>
+                        <div class="file-status" id="omStatus"></div>
+                    </div>
+
+                    <div class="upload-zone" id="rentRollUploadZone">
+                        <div class="upload-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                            </svg>
+                        </div>
+                        <h3>Rent Roll</h3>
+                        <p>Drop Excel file here or click to browse</p>
+                        <input type="file" id="rentRollFile" accept=".xlsx,.xls,.csv" hidden>
+                        <div class="file-status" id="rentRollStatus"></div>
+                    </div>
+
+                    <div class="upload-zone" id="t12UploadZone">
+                        <div class="upload-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                            </svg>
+                        </div>
+                        <h3>T12 Operating Statement</h3>
+                        <p>Drop Excel file here or click to browse</p>
+                        <input type="file" id="t12File" accept=".xlsx,.xls,.csv" hidden>
+                        <div class="file-status" id="t12Status"></div>
+                    </div>
+                </div>
+
+                <div class="extraction-status" id="extractionStatus" style="display: none;">
+                    <div class="status-header">
+                        <div class="spinner"></div>
+                        <span id="extractionMessage">Extracting data...</span>
+                    </div>
+                    <div class="extraction-log" id="extractionLog"></div>
+                </div>
+
+                <div class="extracted-summary" id="extractedSummary" style="display: none;">
+                    <h3>Extracted Data Summary</h3>
+                    <div class="summary-grid" id="summaryGrid"></div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="loadSampleData()">Load Sample Data</button>
+                    <button type="button" class="btn-secondary" onclick="loadAzulData()">Load AZUL Data</button>
+                    <button type="button" class="btn-primary" id="processBtn" onclick="processDocuments()" disabled>Process Documents</button>
+                    <button type="button" class="btn-primary" onclick="switchTab('input')">Review & Edit Data</button>
+                </div>
+            </section>
+        </div>
+
+        <!-- Input Tab -->
+        <div id="input" class="tab-content">
+            <form id="bov-form">
+                <!-- Section 1: Property Information -->
+                <section class="form-section">
+                    <h2>Property Information</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="propertyName">Property Name</label>
+                            <input type="text" id="propertyName" placeholder="e.g., Sunset Gardens Apartments">
+                        </div>
+                        <div class="form-group">
+                            <label for="propertyAddress">Property Address *</label>
+                            <input type="text" id="propertyAddress" required placeholder="123 Main Street">
+                        </div>
+                        <div class="form-group">
+                            <label for="city">City *</label>
+                            <input type="text" id="city" required placeholder="Austin">
+                        </div>
+                        <div class="form-group">
+                            <label for="state">State *</label>
+                            <input type="text" id="state" required placeholder="TX">
+                        </div>
+                        <div class="form-group">
+                            <label for="zipCode">ZIP Code</label>
+                            <input type="text" id="zipCode" placeholder="78701">
+                        </div>
+                        <div class="form-group">
+                            <label for="county">County</label>
+                            <input type="text" id="county" placeholder="Travis">
+                        </div>
+                        <div class="form-group">
+                            <label for="parcelId">Parcel ID (APN)</label>
+                            <input type="text" id="parcelId" placeholder="123-456-789">
+                        </div>
+                        <div class="form-group">
+                            <label for="propertyType">Property Type *</label>
+                            <select id="propertyType" required>
+                                <option value="">Select type...</option>
+                                <option value="Multifamily">Multifamily</option>
+                                <option value="Retail">Retail</option>
+                                <option value="Office">Office</option>
+                                <option value="Industrial">Industrial</option>
+                                <option value="Mixed-Use">Mixed-Use</option>
+                                <option value="Self-Storage">Self-Storage</option>
+                                <option value="Hospitality">Hospitality</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="yearBuilt">Year Built *</label>
+                            <input type="number" id="yearBuilt" required placeholder="1985">
+                        </div>
+                        <div class="form-group">
+                            <label for="yearRenovated">Year Renovated</label>
+                            <input type="number" id="yearRenovated" placeholder="2020">
+                        </div>
+                        <div class="form-group">
+                            <label for="lotSize">Lot Size (Acres)</label>
+                            <input type="number" id="lotSize" step="0.01" placeholder="2.5">
+                        </div>
+                        <div class="form-group">
+                            <label for="buildingSize">Gross Building Area (SF) *</label>
+                            <input type="number" id="buildingSize" required placeholder="45000">
+                        </div>
+                        <div class="form-group">
+                            <label for="numUnits">Number of Units *</label>
+                            <input type="number" id="numUnits" required placeholder="48">
+                        </div>
+                        <div class="form-group">
+                            <label for="occupancyRate">Current Occupancy (%) *</label>
+                            <input type="number" id="occupancyRate" required step="0.1" placeholder="94">
+                        </div>
+                        <div class="form-group">
+                            <label for="constructionType">Construction Type</label>
+                            <input type="text" id="constructionType" placeholder="Wood Frame">
+                        </div>
+                        <div class="form-group">
+                            <label for="parking">Parking</label>
+                            <input type="text" id="parking" placeholder="96 surface spaces (2:1 ratio)">
+                        </div>
+                        <div class="form-group">
+                            <label for="utilities">Utilities</label>
+                            <input type="text" id="utilities" placeholder="Tenant-paid electric; Owner-paid water/sewer/trash">
+                        </div>
+                        <div class="form-group">
+                            <label for="zoning">Zoning</label>
+                            <input type="text" id="zoning" placeholder="MF-3 (Multifamily)">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 2: Unit Mix -->
+                <section class="form-section">
+                    <h2>Unit Mix & Rent Roll</h2>
+                    <div id="unitMixContainer">
+                        <div class="unit-row">
+                            <input type="text" placeholder="Unit Type (e.g., 1BR/1BA)" class="unitType">
+                            <input type="number" placeholder="# Units" class="unitCount">
+                            <input type="number" placeholder="Avg SF" class="unitSF">
+                            <input type="number" placeholder="Current Rent $" class="currentRent">
+                            <input type="number" placeholder="Market Rent $" class="marketRent">
+                            <button type="button" class="remove-unit-btn" onclick="removeUnitRow(this)">×</button>
+                        </div>
+                    </div>
+                    <button type="button" class="add-btn" onclick="addUnitRow()">+ Add Unit Type</button>
+                </section>
+
+                <!-- Section 3: Income & Expenses -->
+                <section class="form-section">
+                    <h2>Income & Operating Expenses (Annual)</h2>
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <h3>Income</h3>
+                        </div>
+                        <div class="form-group">
+                            <label for="otherIncome">Other Income (Laundry/Parking/Fees/RUBS)</label>
+                            <input type="number" id="otherIncome" placeholder="24000">
+                        </div>
+                        <div class="form-group">
+                            <label for="vacancyRate">Vacancy Allowance (%)</label>
+                            <input type="number" id="vacancyRate" step="0.1" placeholder="5">
+                        </div>
+                        <div class="form-group full-width">
+                            <h3>Operating Expenses</h3>
+                        </div>
+                        <div class="form-group">
+                            <label for="realEstateTaxes">Real Estate Taxes</label>
+                            <input type="number" id="realEstateTaxes" placeholder="85000">
+                        </div>
+                        <div class="form-group">
+                            <label for="insurance">Insurance</label>
+                            <input type="number" id="insurance" placeholder="28000">
+                        </div>
+                        <div class="form-group">
+                            <label for="managementFeePercent">Property Management (%)</label>
+                            <input type="number" id="managementFeePercent" step="0.1" placeholder="5">
+                        </div>
+                        <div class="form-group">
+                            <label for="repairsMaintenance">Repairs & Maintenance</label>
+                            <input type="number" id="repairsMaintenance" placeholder="36000">
+                        </div>
+                        <div class="form-group">
+                            <label for="utilitiesExpense">Utilities (Owner-Paid)</label>
+                            <input type="number" id="utilitiesExpense" placeholder="42000">
+                        </div>
+                        <div class="form-group">
+                            <label for="payroll">Payroll</label>
+                            <input type="number" id="payroll" placeholder="73500">
+                        </div>
+                        <div class="form-group">
+                            <label for="contractServices">Contract Services</label>
+                            <input type="number" id="contractServices" placeholder="22000">
+                        </div>
+                        <div class="form-group">
+                            <label for="adminExpense">General & Administrative</label>
+                            <input type="number" id="adminExpense" placeholder="10000">
+                        </div>
+                        <div class="form-group">
+                            <label for="marketing">Marketing & Advertising</label>
+                            <input type="number" id="marketing" placeholder="10000">
+                        </div>
+                        <div class="form-group">
+                            <label for="otherExpenses">Other Expenses</label>
+                            <input type="number" id="otherExpenses" placeholder="18000">
+                        </div>
+                        <div class="form-group">
+                            <label for="reservesPerUnit">Reserves ($/unit/year)</label>
+                            <input type="number" id="reservesPerUnit" placeholder="250">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 4: Capital & Condition -->
+                <section class="form-section">
+                    <h2>Physical Condition & Capital Needs</h2>
+                    <div class="form-group full-width">
+                        <label for="recentCapex">Recent Capital Expenditures</label>
+                        <textarea id="recentCapex" rows="3" placeholder="e.g., New roof installed 2022 ($150,000), HVAC units replaced in 12 units (2021)"></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="deferredMaintenance">Deferred Maintenance / Capital Needs</label>
+                        <textarea id="deferredMaintenance" rows="3" placeholder="e.g., Parking lot needs resurfacing (est. $45,000), 8 units need interior renovation"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="renovationCostPerUnit">Estimated Renovation Cost ($/unit)</label>
+                        <input type="number" id="renovationCostPerUnit" placeholder="8500">
+                    </div>
+                    <div class="form-group">
+                        <label for="unitsToRenovate">Units Requiring Renovation</label>
+                        <input type="number" id="unitsToRenovate" placeholder="24">
+                    </div>
+                </section>
+
+                <!-- Section 5: Market Data -->
+                <section class="form-section">
+                    <h2>Market Analysis</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="submarket">Submarket Name *</label>
+                            <input type="text" id="submarket" required placeholder="East Austin">
+                        </div>
+                        <div class="form-group">
+                            <label for="msa">MSA / Metro</label>
+                            <input type="text" id="msa" placeholder="Austin-Round Rock-San Marcos">
+                        </div>
+                        <div class="form-group">
+                            <label for="msaPopulation">MSA Population</label>
+                            <input type="text" id="msaPopulation" placeholder="2.3 million">
+                        </div>
+                        <div class="form-group">
+                            <label for="populationGrowth">Population Growth (% YoY)</label>
+                            <input type="number" id="populationGrowth" step="0.1" placeholder="2.8">
+                        </div>
+                        <div class="form-group">
+                            <label for="majorEmployers">Major Employers</label>
+                            <input type="text" id="majorEmployers" placeholder="Tesla, Apple, Dell, UT Austin">
+                        </div>
+                        <div class="form-group">
+                            <label for="submarketVacancy">Submarket Vacancy Rate (%)</label>
+                            <input type="number" id="submarketVacancy" step="0.1" placeholder="5.2">
+                        </div>
+                        <div class="form-group">
+                            <label for="rentGrowthYoY">Rent Growth (% YoY)</label>
+                            <input type="number" id="rentGrowthYoY" step="0.1" placeholder="3.5">
+                        </div>
+                        <div class="form-group">
+                            <label for="newSupply">New Supply Pipeline (units within 3 mi)</label>
+                            <input type="number" id="newSupply" placeholder="850">
+                        </div>
+                        <div class="form-group">
+                            <label for="avgHouseholdIncome">Avg Household Income</label>
+                            <input type="text" id="avgHouseholdIncome" placeholder="$97,000">
+                        </div>
+                        <div class="form-group">
+                            <label for="marketCapRateLow">Market Cap Rate - Low (%)</label>
+                            <input type="number" id="marketCapRateLow" step="0.01" placeholder="5.25">
+                        </div>
+                        <div class="form-group">
+                            <label for="marketCapRateHigh">Market Cap Rate - High (%)</label>
+                            <input type="number" id="marketCapRateHigh" step="0.01" placeholder="5.75">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 6: Comparable Sales -->
+                <section class="form-section">
+                    <h2>Comparable Sales</h2>
+                    <div id="compsContainer">
+                        <div class="comp-row">
+                            <div class="comp-header">Comparable #1</div>
+                            <div class="comp-grid">
+                                <input type="text" placeholder="Property Name/Address" class="compName">
+                                <input type="date" placeholder="Sale Date" class="compDate">
+                                <input type="number" placeholder="Units" class="compUnits">
+                                <input type="number" placeholder="Year Built" class="compYearBuilt">
+                                <input type="number" placeholder="Sale Price $" class="compPrice">
+                                <input type="number" placeholder="Cap Rate %" step="0.01" class="compCapRate">
+                                <input type="number" placeholder="Occupancy %" class="compOccupancy">
+                                <input type="number" placeholder="Distance (mi)" step="0.1" class="compDistance">
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="add-btn" onclick="addCompRow()">+ Add Comparable</button>
+                    <div class="form-group full-width" style="margin-top: 20px;">
+                        <label for="compNarrative">Comparable Analysis Narrative</label>
+                        <textarea id="compNarrative" rows="4" placeholder="Describe how the subject compares to the comps and any adjustments made..."></textarea>
+                    </div>
+                </section>
+
+                <!-- Section 7: Rent Comparables -->
+                <section class="form-section">
+                    <h2>Rent Comparables</h2>
+                    <div id="rentCompsContainer">
+                    </div>
+                    <button type="button" class="add-btn" onclick="addRentCompRow()">+ Add Rent Comparable</button>
+                </section>
+
+                <!-- Section 8: Assumable Debt -->
+                <section class="form-section">
+                    <h2>Assumable Debt (Optional)</h2>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="hasAssumableDebt" onchange="toggleDebtSection()">
+                            Property has assumable financing
+                        </label>
+                    </div>
+                    <div id="debtSection" class="hidden">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="lenderName">Lender</label>
+                                <input type="text" id="lenderName" placeholder="Fannie Mae">
+                            </div>
+                            <div class="form-group">
+                                <label for="loanBalance">Outstanding Balance</label>
+                                <input type="number" id="loanBalance" placeholder="3200000">
+                            </div>
+                            <div class="form-group">
+                                <label for="interestRate">Interest Rate (%)</label>
+                                <input type="number" id="interestRate" step="0.01" placeholder="4.25">
+                            </div>
+                            <div class="form-group">
+                                <label for="rateType">Rate Type</label>
+                                <select id="rateType">
+                                    <option value="Fixed">Fixed</option>
+                                    <option value="Variable">Variable</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="maturityDate">Maturity Date</label>
+                                <input type="month" id="maturityDate">
+                            </div>
+                            <div class="form-group">
+                                <label for="ioRemaining">IO Period Remaining (months)</label>
+                                <input type="number" id="ioRemaining" placeholder="24">
+                            </div>
+                            <div class="form-group">
+                                <label for="annualDebtService">Annual Debt Service</label>
+                                <input type="number" id="annualDebtService" placeholder="192000">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 9: Seller & Broker Info -->
+                <section class="form-section">
+                    <h2>Seller Goals & Broker Information</h2>
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <h3>Seller Goals</h3>
+                        </div>
+                        <div class="form-group">
+                            <label for="sellerTimeline">Timeline</label>
+                            <input type="text" id="sellerTimeline" placeholder="Close within 60 days">
+                        </div>
+                        <div class="form-group">
+                            <label for="pricingExpectation">Pricing Expectation</label>
+                            <input type="text" id="pricingExpectation" placeholder="$5.5M - $6M">
+                        </div>
+                        <div class="form-group">
+                            <label for="dealStructure">Deal Structure Preferences</label>
+                            <input type="text" id="dealStructure" placeholder="Prefer assumption of existing debt">
+                        </div>
+                        <div class="form-group full-width">
+                            <h3>Broker Information</h3>
+                        </div>
+                        <div class="form-group">
+                            <label for="brokerName">Broker Name *</label>
+                            <input type="text" id="brokerName" required placeholder="John Smith">
+                        </div>
+                        <div class="form-group">
+                            <label for="brokerLicense">License Number</label>
+                            <input type="text" id="brokerLicense" placeholder="TX-12345678">
+                        </div>
+                        <div class="form-group">
+                            <label for="brokerageFirm">Brokerage Firm *</label>
+                            <input type="text" id="brokerageFirm" required placeholder="ABC Commercial Realty">
+                        </div>
+                        <div class="form-group">
+                            <label for="brokerageAddress">Firm Address</label>
+                            <input type="text" id="brokerageAddress" placeholder="100 Congress Ave, Austin, TX 78701">
+                        </div>
+                        <div class="form-group">
+                            <label for="clientName">Client/Owner Name *</label>
+                            <input type="text" id="clientName" required placeholder="ABC Holdings LLC">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="brokerBio">Broker Bio / Qualifications</label>
+                            <textarea id="brokerBio" rows="3" placeholder="15+ years of multifamily investment sales experience with over $500M in closed transactions..."></textarea>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 10: Valuation Inputs -->
+                <section class="form-section">
+                    <h2>Valuation Parameters</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="appliedCapRate">Applied Cap Rate (%) *</label>
+                            <input type="number" id="appliedCapRate" required step="0.01" placeholder="5.50">
+                        </div>
+                        <div class="form-group">
+                            <label for="stabilizedCapRate">Stabilized Cap Rate (%)</label>
+                            <input type="number" id="stabilizedCapRate" step="0.01" placeholder="5.25">
+                        </div>
+                        <div class="form-group">
+                            <label for="valueLowAdj">Value Range - Low Adjustment (%)</label>
+                            <input type="number" id="valueLowAdj" step="0.1" value="-3" placeholder="-3">
+                        </div>
+                        <div class="form-group">
+                            <label for="valueHighAdj">Value Range - High Adjustment (%)</label>
+                            <input type="number" id="valueHighAdj" step="0.1" value="3" placeholder="3">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 11: Marketing Strategy -->
+                <section class="form-section">
+                    <h2>Marketing & Disposition Strategy</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="marketingApproach">Go-to-Market Approach</label>
+                            <select id="marketingApproach">
+                                <option value="Broad Market">Broad Market</option>
+                                <option value="Targeted/Off-Market">Targeted/Off-Market</option>
+                                <option value="Hybrid">Hybrid Approach</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="targetBuyer">Target Buyer Profile</label>
+                            <input type="text" id="targetBuyer" placeholder="Value-add syndicator, 1031 exchange buyer">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="keySellingPoints">Key Selling Points (one per line)</label>
+                            <textarea id="keySellingPoints" rows="4" placeholder="Below-market rents with 15% upside to market&#10;Recently renovated common areas&#10;Assumable below-market financing&#10;Strong submarket fundamentals"></textarea>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="switchTab('upload')">Back to Upload</button>
+                    <button type="button" class="btn-primary" onclick="generateBOV()">Generate BOV</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Preview Tab -->
+        <div id="preview" class="tab-content">
+            <div class="preview-actions">
+                <button onclick="window.print()" class="btn-primary">Print / Save PDF</button>
+                <button onclick="switchTab('input')" class="btn-secondary">Edit Data</button>
+            </div>
+            <div id="bov-output" class="bov-document">
+                <p class="empty-state">Complete the form and click "Generate BOV" to preview your document.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="parser.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
