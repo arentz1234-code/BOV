@@ -1006,6 +1006,13 @@ function parseRentRollData(excelData) {
         data.summary.avgRent = data.summary.totalMonthlyRent / data.summary.occupiedUnits;
     }
 
+    console.log('parseRentRollData complete:', {
+        totalUnits: data.summary.totalUnits,
+        occupiedUnits: data.summary.occupiedUnits,
+        avgRent: data.summary.avgRent,
+        sampleUnit: data.units[0]
+    });
+
     return data;
 }
 
@@ -1772,6 +1779,9 @@ function addAverageRentRow(container, unitMix) {
 
 function populateFormFromRentRoll(data) {
     if (!data || !data.units) return;
+
+    console.log('Rent roll data received:', data.summary);
+    console.log('First 5 units:', data.units.slice(0, 5));
 
     // Aggregate by unit type
     const unitTypes = {};
