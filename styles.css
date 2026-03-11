@@ -248,17 +248,29 @@ header .subtitle {
 }
 
 /* Comparable Sales */
-.comp-labels,
-.rent-comp-labels {
+.comp-labels {
     display: grid;
-    grid-template-columns: 2fr repeat(7, 1fr) 40px;
-    gap: 10px;
+    grid-template-columns: 1.8fr 1fr 0.7fr 0.8fr 1.2fr 0.8fr 0.8fr 0.8fr 40px;
+    gap: 8px;
     padding: 10px 20px;
     background: var(--primary-color);
     color: white;
     border-radius: 8px 8px 0 0;
     font-weight: 600;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
+    margin-bottom: 0;
+}
+
+.rent-comp-labels {
+    display: grid;
+    grid-template-columns: 1.8fr 0.8fr 0.8fr 0.8fr 1fr 0.7fr 0.8fr 40px;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 8px 8px 0 0;
+    font-weight: 600;
+    font-size: 0.8rem;
     margin-bottom: 0;
 }
 
@@ -293,8 +305,8 @@ header .subtitle {
 
 .comp-grid {
     display: grid;
-    grid-template-columns: 2fr repeat(7, 1fr) 40px;
-    gap: 10px;
+    grid-template-columns: 1.8fr 1fr 0.7fr 0.8fr 1.2fr 0.8fr 0.8fr 0.8fr;
+    gap: 8px;
     align-items: center;
 }
 
@@ -1050,8 +1062,8 @@ header .subtitle {
 
 .rent-comp-grid {
     display: grid;
-    grid-template-columns: 2fr repeat(6, 1fr) 40px;
-    gap: 10px;
+    grid-template-columns: 1.8fr 0.8fr 0.8fr 0.8fr 1fr 0.7fr 0.8fr;
+    gap: 8px;
     align-items: center;
 }
 
