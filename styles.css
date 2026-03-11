@@ -779,6 +779,46 @@ header .subtitle {
     font-size: 0.9rem;
 }
 
+/* Misc File List */
+.misc-file-list {
+    margin-top: 10px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.misc-file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    margin: 4px 0;
+    background: var(--bg-color);
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+.misc-file-item.success {
+    background: #c6f6d5;
+    color: #22543d;
+}
+
+.misc-file-item.error {
+    background: #fed7d7;
+    color: #742a2a;
+}
+
+.misc-file-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 10px;
+}
+
+.misc-file-status {
+    font-weight: bold;
+}
+
 /* Extraction Summary */
 .extraction-summary {
     background: var(--white);

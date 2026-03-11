@@ -8,7 +8,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 let extractedData = {
     om: null,
     rentRoll: null,
-    t12: null
+    t12: null,
+    misc: []
 };
 
 // File upload handlers
@@ -46,6 +47,18 @@ function setupUploadZones() {
     t12Zone.addEventListener('dragleave', handleDragLeave);
     t12Zone.addEventListener('drop', (e) => handleDrop(e, 't12'));
     t12Input.addEventListener('change', (e) => handleFileSelect(e, 't12'));
+
+    // Misc Documents Upload Zone
+    const miscZone = document.getElementById('miscUploadZone');
+    const miscInput = document.getElementById('miscFiles');
+
+    if (miscZone && miscInput) {
+        miscZone.addEventListener('click', () => miscInput.click());
+        miscZone.addEventListener('dragover', handleDragOver);
+        miscZone.addEventListener('dragleave', handleDragLeave);
+        miscZone.addEventListener('drop', (e) => handleMiscDrop(e));
+        miscInput.addEventListener('change', (e) => handleMiscFileSelect(e));
+    }
 }
 
 function handleDragOver(e) {
@@ -76,6 +89,75 @@ function handleFileSelect(e, type) {
     if (files.length > 0) {
         processFile(files[0], type);
     }
+}
+
+function handleMiscDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.classList.remove('drag-over');
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        processMiscFiles(Array.from(files));
+    }
+}
+
+function handleMiscFileSelect(e) {
+    const files = e.target.files;
+    if (files.length > 0) {
+        processMiscFiles(Array.from(files));
+    }
+}
+
+async function processMiscFiles(files) {
+    const statusEl = document.getElementById('miscStatus');
+    const listEl = document.getElementById('miscFileList');
+    const zoneEl = document.getElementById('miscUploadZone');
+
+    zoneEl.classList.add('has-file');
+    extractedData.misc = extractedData.misc || [];
+
+    for (const file of files) {
+        statusEl.innerHTML = `<span class="processing">Processing ${file.name}...</span>`;
+
+        try {
+            let data = null;
+            const ext = file.name.split('.').pop().toLowerCase();
+
+            if (ext === 'pdf') {
+                data = await parseOMPDF(file);
+            } else if (['xlsx', 'xls', 'csv'].includes(ext)) {
+                data = await parseExcel(file);
+            }
+
+            extractedData.misc.push({
+                filename: file.name,
+                type: ext,
+                data: data,
+                raw: data
+            });
+        } catch (err) {
+            console.error(`Error processing ${file.name}:`, err);
+            extractedData.misc.push({
+                filename: file.name,
+                type: file.name.split('.').pop().toLowerCase(),
+                error: err.message
+            });
+        }
+    }
+
+    // Update file list display
+    const fileCount = extractedData.misc.length;
+    statusEl.innerHTML = `<span class="success">${fileCount} file(s) uploaded</span>`;
+
+    listEl.innerHTML = extractedData.misc.map(f =>
+        `<div class="misc-file-item ${f.error ? 'error' : 'success'}">
+            <span class="misc-file-name">${f.filename}</span>
+            <span class="misc-file-status">${f.error ? '✗' : '✓'}</span>
+        </div>`
+    ).join('');
+
+    updateProcessButton();
 }
 
 async function processFile(file, type) {
