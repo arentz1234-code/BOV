@@ -281,6 +281,73 @@ Analyze expenses vs typical benchmarks. Return ONLY valid JSON:
 \`\`\``;
     }
 
+    if (analysisType === 'find_comps') {
+        return `You are a commercial real estate analyst specializing in comparable sales research. Find relevant comparable sales for this property.
+
+${propertyContext}
+
+Based on the subject property's location, size, age, and class, suggest 4-6 comparable sales that would be relevant for valuation. Use your knowledge of recent multifamily transactions in the Florida Treasure Coast / South Florida market and similar secondary markets.
+
+For each comp, provide realistic data based on typical transactions for this market. If you know of actual transactions, use those. Otherwise, create plausible examples based on market norms.
+
+Return ONLY valid JSON:
+
+\`\`\`json
+{
+  "comparableSales": [
+    {
+      "name": "string (property name)",
+      "address": "string (city, state)",
+      "saleDate": "string (YYYY-MM format)",
+      "units": "number",
+      "yearBuilt": "number",
+      "salePrice": "number (total sale price)",
+      "pricePerUnit": "number",
+      "capRate": "number (cap rate %)",
+      "occupancy": "number (occupancy % at sale)",
+      "distance": "number (approximate miles from subject)",
+      "propertyClass": "string (A, B, or C)",
+      "notes": "string (brief note on why this is a good comp)"
+    }
+  ],
+  "compSelectionNotes": "string (2-3 sentences explaining comp selection criteria)",
+  "dataSource": "string (note that these are AI-estimated based on market knowledge)"
+}
+\`\`\``;
+    }
+
+    if (analysisType === 'find_rent_comps') {
+        return `You are a commercial real estate analyst specializing in rent comparable research. Find relevant rent comparables for this property.
+
+${propertyContext}
+
+Based on the subject property's location, size, age, and class, suggest 4-6 rent comparable properties that would be relevant for rent analysis. Use your knowledge of multifamily properties in the Florida Treasure Coast / South Florida market and similar secondary markets.
+
+Return ONLY valid JSON:
+
+\`\`\`json
+{
+  "rentComparables": [
+    {
+      "name": "string (property name)",
+      "address": "string (city, state)",
+      "units": "number",
+      "yearBuilt": "number",
+      "occupancy": "number (current occupancy %)",
+      "avgRent": "number (average monthly rent)",
+      "rentPSF": "number (rent per square foot)",
+      "distance": "number (approximate miles from subject)",
+      "propertyClass": "string (A, B, or C)",
+      "amenities": "string (key amenities)",
+      "notes": "string (brief comparison note)"
+    }
+  ],
+  "rentPositioning": "string (how subject rents compare to market)",
+  "dataSource": "string (note that these are AI-estimated based on market knowledge)"
+}
+\`\`\``;
+    }
+
     if (analysisType === 'full_analysis') {
         return `You are a senior commercial real estate analyst preparing a comprehensive Broker Opinion of Value. Analyze this property and provide complete insights.
 

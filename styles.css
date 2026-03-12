@@ -527,6 +527,16 @@ header .subtitle {
     content: '✗ ';
 }
 
+.btn-ai-highlight {
+    border-color: var(--accent-color);
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+}
+
+.btn-ai-highlight:hover {
+    border-color: var(--accent-color);
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+}
+
 /* Hidden class */
 .hidden {
     display: none !important;

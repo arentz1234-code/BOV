@@ -3003,3 +3003,116 @@ async function generateCompNarrative() {
         }
     }
 }
+
+// Find comparable sales using AI
+async function findSaleComps() {
+    const statusEl = document.getElementById('aiAnalysisStatus');
+    if (statusEl) {
+        statusEl.innerHTML = '<span class="loading">Searching for comparable sales...</span>';
+        statusEl.style.display = 'block';
+    }
+
+    try {
+        const analysis = await runSpecificAnalysis('find_comps');
+
+        if (analysis.comparableSales && analysis.comparableSales.length > 0) {
+            // Clear existing comps
+            const compContainer = document.getElementById('compsContainer');
+            compContainer.innerHTML = '';
+            compCount = 0;
+
+            // Add each comp
+            analysis.comparableSales.forEach((comp, i) => {
+                compCount++;
+                const row = document.createElement('div');
+                row.className = 'comp-row';
+
+                const priceFormatted = '$' + (comp.salePrice || 0).toLocaleString();
+
+                row.innerHTML = `
+                    <div class="comp-header">Comparable #${i + 1}</div>
+                    <div class="comp-grid">
+                        <input type="text" class="compName" value="${comp.name || ''}">
+                        <input type="text" class="compDate" value="${comp.saleDate || ''}" placeholder="YYYY-MM">
+                        <input type="number" class="compUnits" value="${comp.units || ''}">
+                        <input type="number" class="compYearBuilt" value="${comp.yearBuilt || ''}">
+                        <input type="text" class="compPrice" value="${priceFormatted}" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
+                        <input type="number" class="compCapRate" step="0.01" value="${comp.capRate || ''}">
+                        <input type="number" class="compOccupancy" value="${comp.occupancy || ''}">
+                        <input type="number" class="compDistance" step="0.1" value="${comp.distance || ''}">
+                        ${i > 0 ? '<button type="button" class="remove-btn" onclick="removeCompRow(this)">×</button>' : '<span></span>'}
+                    </div>
+                `;
+                compContainer.appendChild(row);
+            });
+
+            if (statusEl) {
+                statusEl.innerHTML = `<span class="success">Found ${analysis.comparableSales.length} comparable sales! Note: ${analysis.dataSource || 'AI-estimated based on market data'}</span>`;
+            }
+        } else {
+            if (statusEl) {
+                statusEl.innerHTML = '<span class="error">No comparable sales found.</span>';
+            }
+        }
+    } catch (error) {
+        if (statusEl) {
+            statusEl.innerHTML = `<span class="error">Find comps error: ${error.message}</span>`;
+        }
+    }
+}
+
+// Find rent comparables using AI
+async function findRentComps() {
+    const statusEl = document.getElementById('aiAnalysisStatus');
+    if (statusEl) {
+        statusEl.innerHTML = '<span class="loading">Searching for rent comparables...</span>';
+        statusEl.style.display = 'block';
+    }
+
+    try {
+        const analysis = await runSpecificAnalysis('find_rent_comps');
+
+        if (analysis.rentComparables && analysis.rentComparables.length > 0) {
+            // Clear existing rent comps
+            const rentCompContainer = document.getElementById('rentCompsContainer');
+            rentCompContainer.innerHTML = '';
+            rentCompCount = 0;
+
+            // Add each rent comp
+            analysis.rentComparables.forEach((comp, i) => {
+                rentCompCount++;
+                const row = document.createElement('div');
+                row.className = 'rent-comp-row';
+
+                const rentFormatted = '$' + (comp.avgRent || 0).toLocaleString();
+
+                row.innerHTML = `
+                    <div class="comp-header">Rent Comp #${i + 1}</div>
+                    <div class="rent-comp-grid">
+                        <input type="text" class="rentCompName" value="${comp.name || ''}">
+                        <input type="number" class="rentCompUnits" value="${comp.units || ''}">
+                        <input type="number" class="rentCompYearBuilt" value="${comp.yearBuilt || ''}">
+                        <input type="number" class="rentCompOccupancy" value="${comp.occupancy || ''}">
+                        <input type="text" class="rentCompAvgRent" value="${rentFormatted}" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
+                        <input type="number" class="rentCompPSF" step="0.01" value="${comp.rentPSF || ''}">
+                        <input type="number" class="rentCompDistance" step="0.1" value="${comp.distance || ''}">
+                        ${i > 0 ? '<button type="button" class="remove-btn" onclick="removeRentCompRow(this)">×</button>' : '<span></span>'}
+                    </div>
+                `;
+                rentCompContainer.appendChild(row);
+            });
+
+            if (statusEl) {
+                statusEl.innerHTML = `<span class="success">Found ${analysis.rentComparables.length} rent comparables! Note: ${analysis.dataSource || 'AI-estimated based on market data'}</span>`;
+            }
+        } else {
+            if (statusEl) {
+                statusEl.innerHTML = '<span class="error">No rent comparables found.</span>';
+            }
+        }
+    } catch (error) {
+        if (statusEl) {
+            statusEl.innerHTML = `<span class="error">Find rent comps error: ${error.message}</span>`;
+        }
+    }
+}
