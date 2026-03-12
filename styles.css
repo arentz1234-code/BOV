@@ -169,14 +169,18 @@ header .subtitle {
     font-weight: 600;
     font-size: 0.85rem;
     margin-bottom: 0;
+    box-sizing: border-box;
 }
 
 .unit-mix-labels span {
     text-align: center;
+    padding: 0 12px;
+    box-sizing: border-box;
 }
 
 .unit-mix-labels span:first-child {
     text-align: left;
+    padding-left: 0;
 }
 
 /* Unit Mix Rows */
@@ -189,6 +193,7 @@ header .subtitle {
     align-items: center;
     background: var(--bg-color);
     border-bottom: 1px solid var(--border-color);
+    box-sizing: border-box;
 }
 
 .unit-row:last-of-type:not(.average-row) {
@@ -201,6 +206,8 @@ header .subtitle {
     border-radius: 6px;
     font-size: 0.9rem;
     text-align: center;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .unit-row input:first-child {
