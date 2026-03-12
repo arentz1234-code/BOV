@@ -432,6 +432,101 @@ header .subtitle {
     background: var(--bg-color);
 }
 
+/* AI Analysis Section */
+.ai-section {
+    background: linear-gradient(135deg, #f0f7ff 0%, #e8f4f8 100%);
+    border: 2px solid var(--primary-color);
+}
+
+.ai-section h2 {
+    color: var(--primary-color);
+}
+
+.section-description {
+    color: var(--text-light);
+    margin-bottom: 20px;
+    font-size: 0.95rem;
+}
+
+.ai-buttons-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.btn-ai {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px 10px;
+    background: var(--white);
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.btn-ai:hover {
+    border-color: var(--primary-color);
+    background: #f8faff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(26, 54, 93, 0.15);
+}
+
+.btn-ai:active {
+    transform: translateY(0);
+}
+
+.btn-ai .btn-icon {
+    font-size: 1.8rem;
+    margin-bottom: 8px;
+}
+
+.btn-ai .btn-label {
+    font-weight: 600;
+    color: var(--primary-color);
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+}
+
+.btn-ai .btn-desc {
+    font-size: 0.75rem;
+    color: var(--text-light);
+}
+
+.ai-status {
+    padding: 12px 15px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    margin-top: 10px;
+}
+
+.ai-status .loading {
+    color: var(--primary-color);
+}
+
+.ai-status .loading::before {
+    content: '⏳ ';
+}
+
+.ai-status .success {
+    color: var(--success-color);
+}
+
+.ai-status .success::before {
+    content: '✓ ';
+}
+
+.ai-status .error {
+    color: var(--error-color);
+}
+
+.ai-status .error::before {
+    content: '✗ ';
+}
+
 /* Hidden class */
 .hidden {
     display: none !important;

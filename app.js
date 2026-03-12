@@ -2642,3 +2642,364 @@ function loadDefaultRentComps() {
         rentCompContainer.appendChild(row);
     });
 }
+
+// ============================================
+// AI ANALYSIS FUNCTIONS
+// ============================================
+
+// Run full AI analysis on the property data
+async function runAIAnalysis() {
+    const formData = collectAllFormData();
+
+    // Calculate financials to include in analysis
+    const financials = calculateFinancialsForAnalysis(formData);
+    const propertyData = { ...formData, ...financials };
+
+    // Show loading state
+    const statusEl = document.getElementById('aiAnalysisStatus');
+    if (statusEl) {
+        statusEl.innerHTML = '<span class="loading">Running AI analysis... This may take a moment.</span>';
+        statusEl.style.display = 'block';
+    }
+
+    try {
+        // Run full analysis
+        const response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                analysisType: 'full_analysis',
+                propertyData: propertyData
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Analysis failed: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.analysis) {
+            applyAnalysisResults(result.analysis);
+            if (statusEl) {
+                statusEl.innerHTML = '<span class="success">AI analysis complete! Fields have been populated.</span>';
+            }
+        } else {
+            throw new Error(result.error || 'Analysis failed');
+        }
+    } catch (error) {
+        console.error('AI Analysis error:', error);
+        if (statusEl) {
+            statusEl.innerHTML = `<span class="error">Analysis error: ${error.message}</span>`;
+        }
+    }
+}
+
+// Run specific analysis type
+async function runSpecificAnalysis(analysisType) {
+    const formData = collectAllFormData();
+    const financials = calculateFinancialsForAnalysis(formData);
+    const propertyData = { ...formData, ...financials };
+
+    try {
+        const response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                analysisType: analysisType,
+                propertyData: propertyData
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Analysis failed: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.analysis) {
+            return result.analysis;
+        } else {
+            throw new Error(result.error || 'Analysis failed');
+        }
+    } catch (error) {
+        console.error(`${analysisType} error:`, error);
+        throw error;
+    }
+}
+
+// Calculate financials for analysis context
+function calculateFinancialsForAnalysis(data) {
+    const units = data.unitMix || [];
+    let gpr = 0;
+    units.forEach(u => {
+        const rent = parseFloat(String(u.currentRent).replace(/[$,]/g, '')) || 0;
+        gpr += (u.count || 0) * rent * 12;
+    });
+
+    const vacancyRate = data.vacancyRate || 5;
+    const vacancyLoss = gpr * (vacancyRate / 100);
+    const otherIncome = data.otherIncome || 0;
+    const egi = gpr - vacancyLoss + otherIncome;
+
+    const numUnits = data.numUnits || units.reduce((sum, u) => sum + (u.count || 0), 0);
+    const managementFee = egi * ((data.managementFeePercent || 5) / 100);
+    const reserves = (data.reservesPerUnit || 250) * numUnits;
+
+    const totalExpenses = (data.realEstateTaxes || 0) +
+                          (data.insurance || 0) +
+                          managementFee +
+                          (data.repairsMaintenance || 0) +
+                          (data.utilitiesExpense || 0) +
+                          (data.otherExpenses || 0) +
+                          reserves;
+
+    const noi = egi - totalExpenses;
+
+    return {
+        gpr: gpr,
+        egi: egi,
+        totalExpenses: totalExpenses,
+        noi: noi,
+        expenseRatio: egi > 0 ? ((totalExpenses / egi) * 100).toFixed(1) : 0
+    };
+}
+
+// Apply full analysis results to the form
+function applyAnalysisResults(analysis) {
+    // Executive Summary & Marketing
+    if (analysis.executiveSummary) {
+        // Store for use in BOV generation
+        window.aiExecutiveSummary = analysis.executiveSummary;
+    }
+
+    if (analysis.investmentHighlights) {
+        window.aiInvestmentHighlights = analysis.investmentHighlights;
+    }
+
+    // Key Selling Points
+    if (analysis.keySellingPoints) {
+        document.getElementById('keySellingPoints').value = analysis.keySellingPoints;
+    }
+
+    // Target Buyer Profile
+    if (analysis.targetBuyers) {
+        document.getElementById('targetBuyer').value = analysis.targetBuyers;
+    }
+
+    // Cap Rate Recommendation
+    if (analysis.recommendedCapRate) {
+        if (!document.getElementById('appliedCapRate').value) {
+            const avgCap = (analysis.recommendedCapRate.low + analysis.recommendedCapRate.high) / 2;
+            document.getElementById('appliedCapRate').value = avgCap.toFixed(2);
+        }
+        document.getElementById('marketCapRateLow').value = analysis.recommendedCapRate.low;
+        document.getElementById('marketCapRateHigh').value = analysis.recommendedCapRate.high;
+    }
+
+    // Market Analysis
+    if (analysis.marketAnalysis) {
+        window.aiMarketAnalysis = analysis.marketAnalysis;
+    }
+
+    // Risk Assessment
+    if (analysis.riskAssessment) {
+        window.aiRiskAssessment = analysis.riskAssessment;
+    }
+
+    // Value Add Opportunities
+    if (analysis.valueAddOpportunities) {
+        window.aiValueAddOpportunities = analysis.valueAddOpportunities;
+    }
+
+    // Due Diligence Items
+    if (analysis.dueDiligenceItems) {
+        window.aiDueDiligenceItems = analysis.dueDiligenceItems;
+    }
+
+    console.log('AI Analysis applied:', analysis);
+}
+
+// Run market research analysis
+async function runMarketResearch() {
+    const statusEl = document.getElementById('aiAnalysisStatus');
+    if (statusEl) {
+        statusEl.innerHTML = '<span class="loading">Researching market data...</span>';
+        statusEl.style.display = 'block';
+    }
+
+    try {
+        const analysis = await runSpecificAnalysis('market_research');
+
+        // Apply market data to form
+        if (analysis.msaPopulation) {
+            document.getElementById('msaPopulation').value = analysis.msaPopulation;
+        }
+        if (analysis.populationGrowth) {
+            document.getElementById('populationGrowth').value = analysis.populationGrowth;
+        }
+        if (analysis.majorEmployers) {
+            document.getElementById('majorEmployers').value = analysis.majorEmployers;
+        }
+        if (analysis.submarketVacancy) {
+            document.getElementById('submarketVacancy').value = analysis.submarketVacancy;
+        }
+        if (analysis.rentGrowthYoY) {
+            document.getElementById('rentGrowthYoY').value = analysis.rentGrowthYoY;
+        }
+        if (analysis.medianHouseholdIncome) {
+            document.getElementById('avgHouseholdIncome').value = analysis.medianHouseholdIncome;
+        }
+
+        if (statusEl) {
+            statusEl.innerHTML = '<span class="success">Market research complete!</span>';
+        }
+    } catch (error) {
+        if (statusEl) {
+            statusEl.innerHTML = `<span class="error">Market research error: ${error.message}</span>`;
+        }
+    }
+}
+
+// Run valuation recommendation
+async function runValuationAnalysis() {
+    const statusEl = document.getElementById('aiAnalysisStatus');
+    if (statusEl) {
+        statusEl.innerHTML = '<span class="loading">Analyzing valuation...</span>';
+        statusEl.style.display = 'block';
+    }
+
+    try {
+        const analysis = await runSpecificAnalysis('valuation_recommendation');
+
+        if (analysis.recommendedCapRateLow) {
+            document.getElementById('marketCapRateLow').value = analysis.recommendedCapRateLow;
+        }
+        if (analysis.recommendedCapRateHigh) {
+            document.getElementById('marketCapRateHigh').value = analysis.recommendedCapRateHigh;
+        }
+        if (!document.getElementById('appliedCapRate').value && analysis.recommendedCapRateLow && analysis.recommendedCapRateHigh) {
+            const avgCap = (analysis.recommendedCapRateLow + analysis.recommendedCapRateHigh) / 2;
+            document.getElementById('appliedCapRate').value = avgCap.toFixed(2);
+        }
+
+        window.aiValuationAnalysis = analysis;
+
+        if (statusEl) {
+            statusEl.innerHTML = `<span class="success">Valuation analysis complete! Recommended cap rate: ${analysis.recommendedCapRateLow}% - ${analysis.recommendedCapRateHigh}%</span>`;
+        }
+    } catch (error) {
+        if (statusEl) {
+            statusEl.innerHTML = `<span class="error">Valuation error: ${error.message}</span>`;
+        }
+    }
+}
+
+// Generate marketing copy
+async function generateMarketingCopy() {
+    const statusEl = document.getElementById('aiAnalysisStatus');
+    if (statusEl) {
+        statusEl.innerHTML = '<span class="loading">Generating marketing copy...</span>';
+        statusEl.style.display = 'block';
+    }
+
+    try {
+        const analysis = await runSpecificAnalysis('marketing_copy');
+
+        if (analysis.keySellingPoints) {
+            document.getElementById('keySellingPoints').value = analysis.keySellingPoints;
+        }
+        if (analysis.targetBuyerProfile) {
+            document.getElementById('targetBuyer').value = analysis.targetBuyerProfile;
+        }
+        if (analysis.executiveSummary) {
+            window.aiExecutiveSummary = analysis.executiveSummary;
+        }
+        if (analysis.investmentHighlights) {
+            window.aiInvestmentHighlights = analysis.investmentHighlights;
+        }
+
+        if (statusEl) {
+            statusEl.innerHTML = '<span class="success">Marketing copy generated!</span>';
+        }
+    } catch (error) {
+        if (statusEl) {
+            statusEl.innerHTML = `<span class="error">Marketing copy error: ${error.message}</span>`;
+        }
+    }
+}
+
+// Run risk assessment
+async function runRiskAssessment() {
+    const statusEl = document.getElementById('aiAnalysisStatus');
+    if (statusEl) {
+        statusEl.innerHTML = '<span class="loading">Assessing risks...</span>';
+        statusEl.style.display = 'block';
+    }
+
+    try {
+        const analysis = await runSpecificAnalysis('risk_assessment');
+        window.aiRiskAssessment = analysis;
+
+        if (statusEl) {
+            statusEl.innerHTML = `<span class="success">Risk assessment complete! Overall rating: ${analysis.overallRiskRating}</span>`;
+        }
+    } catch (error) {
+        if (statusEl) {
+            statusEl.innerHTML = `<span class="error">Risk assessment error: ${error.message}</span>`;
+        }
+    }
+}
+
+// Run expense benchmarking
+async function runExpenseBenchmarking() {
+    const statusEl = document.getElementById('aiAnalysisStatus');
+    if (statusEl) {
+        statusEl.innerHTML = '<span class="loading">Benchmarking expenses...</span>';
+        statusEl.style.display = 'block';
+    }
+
+    try {
+        const analysis = await runSpecificAnalysis('expense_benchmarking');
+        window.aiExpenseAnalysis = analysis;
+
+        const anomalies = analysis.anomalies?.length || 0;
+        if (statusEl) {
+            statusEl.innerHTML = `<span class="success">Expense benchmarking complete! ${anomalies} anomalies found.</span>`;
+        }
+    } catch (error) {
+        if (statusEl) {
+            statusEl.innerHTML = `<span class="error">Expense benchmarking error: ${error.message}</span>`;
+        }
+    }
+}
+
+// Generate comp analysis narrative
+async function generateCompNarrative() {
+    const statusEl = document.getElementById('aiAnalysisStatus');
+    if (statusEl) {
+        statusEl.innerHTML = '<span class="loading">Analyzing comparables...</span>';
+        statusEl.style.display = 'block';
+    }
+
+    try {
+        const analysis = await runSpecificAnalysis('comp_analysis');
+
+        if (analysis.salesCompNarrative) {
+            const currentNarrative = document.getElementById('compNarrative').value;
+            const newNarrative = analysis.salesCompNarrative +
+                (analysis.rentCompNarrative ? '\n\n' + analysis.rentCompNarrative : '');
+            document.getElementById('compNarrative').value = newNarrative;
+        }
+
+        window.aiCompAnalysis = analysis;
+
+        if (statusEl) {
+            statusEl.innerHTML = '<span class="success">Comp analysis narrative generated!</span>';
+        }
+    } catch (error) {
+        if (statusEl) {
+            statusEl.innerHTML = `<span class="error">Comp analysis error: ${error.message}</span>`;
+        }
+    }
+}
