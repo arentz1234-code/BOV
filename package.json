@@ -2,8 +2,8 @@
   "name": "bov-generator",
   "version": "2.0.0",
   "description": "Professional Broker Opinion of Value Document Generator",
-  "scripts": {
-    "start": "python3 server.py"
+  "engines": {
+    "node": ">=18"
   },
   "dependencies": {}
 }
