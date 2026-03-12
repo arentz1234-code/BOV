@@ -1148,6 +1148,9 @@ Proven rent growth in submarket with 4.2% YoY increases`;
 
 // Load AZUL Property Data (from Offering Memorandum)
 function loadAzulData() {
+    // Clear any stale localStorage data first
+    localStorage.removeItem('bovDraft');
+
     // Set property photo from official website
     const azulPhotoUrl = 'https://images.myrazz.com/uc-image/44e771ce-d422-4ac9-89af-ba2017754e26/-/scale_crop/1200x630/smart/-/format/webp/-/quality/lighter/Azul%20Luxury%20Residences.jpeg.webp';
     propertyPhotoData = azulPhotoUrl;
