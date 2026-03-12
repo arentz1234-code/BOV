@@ -3064,6 +3064,47 @@ async function runAIEnhancements() {
         );
     }
 
+    // If rent comps are missing data, find them
+    const rentCompRows = document.querySelectorAll('#rentCompsContainer .rent-comp-row');
+    const hasCompleteRentComps = Array.from(rentCompRows).every(row => {
+        const yearBuilt = row.querySelector('.rentCompYearBuilt')?.value;
+        const occupancy = row.querySelector('.rentCompOccupancy')?.value;
+        const avgRent = row.querySelector('.rentCompAvgRent')?.value;
+        return yearBuilt && occupancy && avgRent && avgRent !== '$0';
+    });
+
+    if (rentCompRows.length === 0 || !hasCompleteRentComps) {
+        promises.push(
+            runSpecificAnalysis('find_rent_comps').then(analysis => {
+                if (analysis.rentComparables && analysis.rentComparables.length > 0) {
+                    const rentCompContainer = document.getElementById('rentCompsContainer');
+                    rentCompContainer.innerHTML = '';
+                    rentCompCount = 0;
+                    analysis.rentComparables.forEach((comp, i) => {
+                        rentCompCount++;
+                        const row = document.createElement('div');
+                        row.className = 'rent-comp-row';
+                        const rentFormatted = '$' + (comp.avgRent || 0).toLocaleString();
+                        row.innerHTML = `
+                            <div class="comp-header">Rent Comp #${i + 1}</div>
+                            <div class="rent-comp-grid">
+                                <input type="text" class="rentCompName" value="${comp.name || ''}">
+                                <input type="number" class="rentCompUnits" value="${comp.units || ''}">
+                                <input type="number" class="rentCompYearBuilt" value="${comp.yearBuilt || ''}">
+                                <input type="number" class="rentCompOccupancy" value="${comp.occupancy || ''}">
+                                <input type="text" class="rentCompAvgRent" value="${rentFormatted}" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
+                                <input type="number" class="rentCompPSF" step="0.01" value="${comp.rentPSF || ''}">
+                                <input type="number" class="rentCompDistance" step="0.1" value="${comp.distance || ''}">
+                                ${i > 0 ? '<button type="button" class="remove-btn" onclick="removeRentCompRow(this)">×</button>' : '<span></span>'}
+                            </div>
+                        `;
+                        rentCompContainer.appendChild(row);
+                    });
+                }
+            }).catch(e => console.log('Find rent comps skipped:', e.message))
+        );
+    }
+
     // Wait for all analyses to complete
     await Promise.all(promises);
 }

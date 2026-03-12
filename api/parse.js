@@ -117,7 +117,16 @@ COMPARABLE SALES EXTRACTION - Extract ALL comp data with complete information:
 - For EACH comp, extract ALL fields: name, date, units, yearBuilt, price, capRate, occupancy, distance
 - If a field is not explicitly stated, estimate it based on context (e.g., cap rate from price/NOI, distance from location)
 - Never return 0.00 or empty for cap rate or occupancy - these should always have values
-- Look for tables with comp data and extract every column`;
+- Look for tables with comp data and extract every column
+
+RENT COMPARABLES EXTRACTION - Extract ALL rent comp data with complete information:
+- Look for "rent comparables", "competitive set", "market rents", "rent comps" sections
+- For EACH rent comp, extract ALL fields: name, units, yearBuilt, occupancy, avgRent, psf, distance
+- NEVER leave yearBuilt, occupancy, avgRent, or distance blank/zero - estimate if not stated
+- yearBuilt: Estimate from property class/age description (Class A newer = 2015+, Class B = 2000-2015, etc.)
+- occupancy: If not stated, use 94-96% as typical for market-rate properties
+- avgRent: Calculate from $/SF if needed (typical 900-1200 SF units)
+- distance: Estimate from location description relative to subject property`;
 
     if (fileType === 'om') {
         return `${baseInstructions}
