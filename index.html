@@ -159,12 +159,34 @@
                 </div>
 
                 <div class="form-actions">
-                    <button type="button" class="btn-secondary" onclick="clearAllData()">Clear All Data</button>
+                    <button type="button" class="btn-secondary btn-danger" onclick="clearAllData()">Clear All</button>
                     <button type="button" class="btn-secondary" onclick="loadSampleData()">Load Sample Data</button>
-                    <button type="button" class="btn-secondary" onclick="loadAzulData()">Load AZUL Data</button>
-                    <button type="button" class="btn-secondary" onclick="importFormData()">Import JSON</button>
+                    <div class="saved-bovs-dropdown">
+                        <button type="button" class="btn-secondary" onclick="toggleSavedBOVs()">My Saved BOVs ▼</button>
+                        <div id="savedBOVsList" class="saved-bovs-list" style="display: none;">
+                            <div class="saved-bovs-header">
+                                <span>Saved BOVs</span>
+                                <button type="button" class="btn-small" onclick="saveBOV()">+ Save Current</button>
+                            </div>
+                            <div id="savedBOVsContent">No saved BOVs yet</div>
+                        </div>
+                    </div>
                     <button type="button" class="btn-primary" id="processBtn" onclick="processDocuments()" disabled>Process Documents</button>
                     <button type="button" class="btn-primary" onclick="switchTab('input')">Review & Edit Data</button>
+                </div>
+
+                <!-- Progress Indicator -->
+                <div class="progress-section">
+                    <div class="progress-header">
+                        <span>Form Completion</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-details" id="progressDetails">
+                        Upload documents or load sample data to begin
+                    </div>
                 </div>
             </section>
         </div>

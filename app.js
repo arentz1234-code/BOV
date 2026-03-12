@@ -3,6 +3,200 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
 });
 
+// ============================================
+// SAVED BOVs MANAGEMENT
+// ============================================
+
+function toggleSavedBOVs() {
+    const list = document.getElementById('savedBOVsList');
+    if (list.style.display === 'none') {
+        list.style.display = 'block';
+        refreshSavedBOVsList();
+    } else {
+        list.style.display = 'none';
+    }
+}
+
+function saveBOV() {
+    const formData = collectAllFormData();
+    const propertyName = formData.propertyName || 'Untitled BOV';
+    const id = 'bov_' + Date.now();
+
+    const savedBOV = {
+        id: id,
+        name: propertyName,
+        savedAt: new Date().toISOString(),
+        data: formData
+    };
+
+    // Get existing saved BOVs
+    let savedBOVs = JSON.parse(localStorage.getItem('savedBOVs') || '[]');
+    savedBOVs.unshift(savedBOV);
+
+    // Keep only last 20 BOVs
+    if (savedBOVs.length > 20) {
+        savedBOVs = savedBOVs.slice(0, 20);
+    }
+
+    localStorage.setItem('savedBOVs', JSON.stringify(savedBOVs));
+    refreshSavedBOVsList();
+
+    alert(`BOV saved: "${propertyName}"`);
+}
+
+function loadSavedBOV(id) {
+    const savedBOVs = JSON.parse(localStorage.getItem('savedBOVs') || '[]');
+    const bov = savedBOVs.find(b => b.id === id);
+
+    if (bov && bov.data) {
+        populateFormFromData(bov.data);
+        document.getElementById('savedBOVsList').style.display = 'none';
+        updateProgress();
+        alert(`Loaded: "${bov.name}"`);
+    }
+}
+
+function deleteSavedBOV(id, event) {
+    event.stopPropagation();
+
+    if (!confirm('Delete this saved BOV?')) return;
+
+    let savedBOVs = JSON.parse(localStorage.getItem('savedBOVs') || '[]');
+    savedBOVs = savedBOVs.filter(b => b.id !== id);
+    localStorage.setItem('savedBOVs', JSON.stringify(savedBOVs));
+    refreshSavedBOVsList();
+}
+
+function refreshSavedBOVsList() {
+    const container = document.getElementById('savedBOVsContent');
+    const savedBOVs = JSON.parse(localStorage.getItem('savedBOVs') || '[]');
+
+    if (savedBOVs.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-light); text-align: center;">No saved BOVs yet.<br>Click "+ Save Current" to save your work.</p>';
+        return;
+    }
+
+    container.innerHTML = savedBOVs.map(bov => {
+        const date = new Date(bov.savedAt).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        return `
+            <div class="saved-bov-item" onclick="loadSavedBOV('${bov.id}')">
+                <div class="saved-bov-info">
+                    <div class="saved-bov-name">${bov.name}</div>
+                    <div class="saved-bov-date">${date}</div>
+                </div>
+                <button class="saved-bov-delete" onclick="deleteSavedBOV('${bov.id}', event)">×</button>
+            </div>
+        `;
+    }).join('');
+}
+
+// ============================================
+// PROGRESS TRACKING
+// ============================================
+
+function updateProgress() {
+    const requiredFields = [
+        'propertyAddress', 'city', 'state', 'propertyType', 'numUnits', 'yearBuilt'
+    ];
+
+    const importantFields = [
+        'propertyName', 'buildingSize', 'occupancyRate',
+        'realEstateTaxes', 'insurance', 'appliedCapRate'
+    ];
+
+    const allFields = [...requiredFields, ...importantFields];
+
+    let filledCount = 0;
+    let missingRequired = [];
+    let missingImportant = [];
+
+    requiredFields.forEach(field => {
+        const el = document.getElementById(field);
+        if (el && el.value && el.value.trim() !== '') {
+            filledCount++;
+        } else {
+            missingRequired.push(field);
+        }
+    });
+
+    importantFields.forEach(field => {
+        const el = document.getElementById(field);
+        if (el && el.value && el.value.trim() !== '') {
+            filledCount++;
+        } else {
+            missingImportant.push(field);
+        }
+    });
+
+    // Check unit mix
+    const unitRows = document.querySelectorAll('#unitMixContainer .unit-row');
+    const hasUnitMix = unitRows.length > 0 && document.querySelector('.unitType')?.value;
+    if (hasUnitMix) filledCount++;
+
+    // Check comps
+    const compRows = document.querySelectorAll('#compsContainer .comp-row');
+    const hasComps = compRows.length > 0 && document.querySelector('.compName')?.value;
+    if (hasComps) filledCount++;
+
+    const totalFields = allFields.length + 2; // +2 for unit mix and comps
+    const percent = Math.round((filledCount / totalFields) * 100);
+
+    // Update UI
+    const progressBar = document.getElementById('progressBar');
+    const progressPercent = document.getElementById('progressPercent');
+    const progressDetails = document.getElementById('progressDetails');
+
+    if (progressBar) progressBar.style.width = percent + '%';
+    if (progressPercent) progressPercent.textContent = percent + '%';
+
+    if (progressDetails) {
+        if (percent === 0) {
+            progressDetails.textContent = 'Upload documents or load sample data to begin';
+        } else if (percent < 50) {
+            progressDetails.innerHTML = `<strong>Missing required:</strong> ${missingRequired.length > 0 ? missingRequired.slice(0, 3).join(', ') : 'None'}`;
+        } else if (percent < 100) {
+            progressDetails.innerHTML = `<strong>Almost there!</strong> Consider adding: ${missingImportant.slice(0, 2).join(', ')}`;
+        } else {
+            progressDetails.innerHTML = '<strong style="color: var(--success-color);">Ready to generate BOV!</strong>';
+        }
+    }
+}
+
+// Update progress when form changes
+document.addEventListener('DOMContentLoaded', () => {
+    // Add change listeners to all form fields
+    document.querySelectorAll('#bov-form input, #bov-form select, #bov-form textarea').forEach(el => {
+        el.addEventListener('change', updateProgress);
+        el.addEventListener('input', debounce(updateProgress, 500));
+    });
+
+    // Initial progress update
+    setTimeout(updateProgress, 500);
+});
+
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+    const dropdown = document.querySelector('.saved-bovs-dropdown');
+    const list = document.getElementById('savedBOVsList');
+    if (dropdown && list && !dropdown.contains(e.target)) {
+        list.style.display = 'none';
+    }
+});
+
 // Photo upload handling
 let propertyPhotoData = null;
 
@@ -951,7 +1145,16 @@ function clearAllData() {
     compCount = 0;
     rentCompCount = 0;
 
-    alert('All data cleared! You can now load fresh data.');
+    // Clear photo
+    propertyPhotoData = null;
+    const preview = document.getElementById('photoPreview');
+    if (preview) {
+        preview.src = '';
+        preview.style.display = 'none';
+    }
+
+    // Update progress
+    updateProgress();
 }
 
 // Load Sample Data
@@ -1116,16 +1319,18 @@ function loadSampleData() {
     document.getElementById('ioRemaining').value = '0';
     document.getElementById('annualDebtService').value = '252000';
 
-    // Seller & Broker
+    // Seller Goals
     document.getElementById('sellerTimeline').value = 'Prefer closing within 60 days; flexible on close date if pricing is strong';
     document.getElementById('pricingExpectation').value = '$7.5M - $8.0M';
     document.getElementById('dealStructure').value = 'Prefer loan assumption; will consider all-cash offers at appropriate pricing';
-    document.getElementById('brokerName').value = 'Michael Richardson';
-    document.getElementById('brokerLicense').value = 'TX-0587234';
-    document.getElementById('brokerageFirm').value = 'Lone Star Investment Properties';
-    document.getElementById('brokerageAddress').value = '100 Congress Avenue, Suite 1500, Austin, TX 78701';
-    document.getElementById('clientName').value = 'Riverside Holdings LLC';
-    document.getElementById('brokerBio').value = '18+ years of multifamily investment sales experience in Central Texas. Over $750M in closed transactions including 45+ multifamily properties. Former CBRE and Marcus & Millichap. Specializes in value-add and core-plus multifamily assets in the Austin MSA.';
+
+    // Broker info - leave blank for user to fill in their own
+    document.getElementById('brokerName').value = '';
+    document.getElementById('brokerLicense').value = '';
+    document.getElementById('brokerageFirm').value = '';
+    document.getElementById('brokerageAddress').value = '';
+    document.getElementById('clientName').value = '';
+    document.getElementById('brokerBio').value = '';
 
     // Valuation
     document.getElementById('appliedCapRate').value = '5.40';
@@ -1143,7 +1348,8 @@ Strong East Austin location benefiting from continued urban migration
 Recent capital improvements including new roof (2022) and common area renovations (2019)
 Proven rent growth in submarket with 4.2% YoY increases`;
 
-    alert('Sample data loaded! Click "Generate BOV" to preview the document.');
+    // Update progress
+    updateProgress();
 }
 
 // Load AZUL Property Data (from Offering Memorandum)
@@ -1363,7 +1569,8 @@ Washer/dryer in every unit; comprehensive amenity set including pool, spa, fitne
 15 minutes to I-95 and Stuart Beach / Atlantic Ocean
 Named "America's Happiest Seaside Town" (Coastal Living Magazine, 2023)`;
 
-    alert('AZUL property data loaded from Offering Memorandum! Click "Generate BOV" to preview the document.');
+    // Update progress
+    updateProgress();
 }
 
 // ============================================================================
