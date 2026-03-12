@@ -193,9 +193,15 @@ Extract the following information and return as JSON:
         "distance": "number (miles)"
       }
     ],
-    "brokerName": "string",
-    "brokerageFirm": "string",
-    "brokerLicense": "string",
+    "brokerName": "string (listing broker name - look in contacts, listing agent section, prepared by)",
+    "brokerageFirm": "string (brokerage company name - Marcus & Millichap, CBRE, Cushman, JLL, etc.)",
+    "brokerLicense": "string (real estate license number if shown)",
+    "brokerageAddress": "string (broker/firm office address)",
+    "brokerBio": "string (broker qualifications, experience, transaction history if mentioned)",
+    "clientName": "string (property owner, seller name, ownership entity - look for LLC, LP, Trust names)",
+    "sellerTimeline": "string (desired closing timeline, marketing period, call for offers date)",
+    "pricingExpectation": "string (asking price, price guidance, pricing expectations if mentioned)",
+    "dealStructure": "string (fee simple, ground lease, assumable debt, seller financing preferences)",
     "recentCapex": "string (detailed description of recent capital improvements, renovations, upgrades - look for sections about property improvements, capital expenditures, value-add completed, recent upgrades, amenity additions)",
     "deferredMaintenance": "string (description of deferred maintenance, capital needs, required repairs, or note 'None identified' for newer properties in good condition)",
     "renovationCostPerUnit": "number (estimated cost per unit for renovations if mentioned, or null)",
@@ -212,7 +218,9 @@ Extract the following information and return as JSON:
     "unitMix": "high|medium|low",
     "capitalNeeds": "high|medium|low",
     "financials": "high|medium|low",
-    "comps": "high|medium|low"
+    "comps": "high|medium|low",
+    "brokerInfo": "high|medium|low",
+    "sellerGoals": "high|medium|low"
   }
 }
 \`\`\`

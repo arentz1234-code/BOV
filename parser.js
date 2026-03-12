@@ -1483,18 +1483,18 @@ function populateFormFromOM(data) {
     }
 
     // === SECTION 9: Seller & Broker Info ===
-    // Leave these blank for user to fill in
-    document.getElementById('sellerTimeline').value = data.sellerTimeline || '';
-    document.getElementById('pricingExpectation').value = data.pricingExpectation || '';
-    document.getElementById('dealStructure').value = data.dealStructure || '';
+    // Extract from document if available
+    document.getElementById('sellerTimeline').value = cleanText(data.sellerTimeline, 200) || '';
+    document.getElementById('pricingExpectation').value = cleanText(data.pricingExpectation, 200) || '';
+    document.getElementById('dealStructure').value = cleanText(data.dealStructure, 200) || '';
 
-    // Broker info - leave blank for user to fill in (don't extract from OM, it's the seller's broker)
-    document.getElementById('brokerName').value = '';
-    document.getElementById('brokerLicense').value = '';
-    document.getElementById('brokerageFirm').value = '';
-    document.getElementById('brokerageAddress').value = '';
-    document.getElementById('clientName').value = '';
-    document.getElementById('brokerBio').value = '';
+    // Broker info - extract from OM document
+    document.getElementById('brokerName').value = cleanText(data.brokerName, 100) || '';
+    document.getElementById('brokerLicense').value = cleanText(data.brokerLicense, 50) || '';
+    document.getElementById('brokerageFirm').value = cleanText(data.brokerageFirm, 100) || '';
+    document.getElementById('brokerageAddress').value = cleanText(data.brokerageAddress, 200) || '';
+    document.getElementById('clientName').value = cleanText(data.clientName, 100) || '';
+    document.getElementById('brokerBio').value = cleanText(data.brokerBio, 500) || '';
 
     // === SECTION 10: Valuation Parameters ===
     // Leave blank for user to fill in
