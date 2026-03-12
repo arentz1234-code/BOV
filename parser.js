@@ -12,6 +12,100 @@ let extractedData = {
     misc: []
 };
 
+// Global storage for extraction confidence levels
+let extractionConfidence = {
+    om: {},
+    rentRoll: {},
+    t12: {}
+};
+
+// Flag to control AI parsing (can be toggled via UI)
+let useAIParsing = true;
+
+// Parse document using Claude AI
+async function parseWithClaude(fileType, content) {
+    console.log(`Attempting Claude AI parsing for ${fileType}...`);
+
+    try {
+        const response = await fetch('/api/parse', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                fileType: fileType,
+                content: content
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.warn('Claude API error:', response.status, errorText);
+            return null;
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.data) {
+            console.log('Claude AI parsing successful:', result);
+            // Store confidence levels
+            if (result.confidence) {
+                extractionConfidence[fileType] = result.confidence;
+            }
+            return result.data;
+        } else {
+            console.warn('Claude parsing returned no data');
+            return null;
+        }
+    } catch (error) {
+        console.warn('Claude API not available, falling back to regex parsing:', error.message);
+        return null;
+    }
+}
+
+// Get confidence indicator HTML for a field
+function getConfidenceIndicator(fileType, fieldName) {
+    const confidence = extractionConfidence[fileType]?.[fieldName];
+    if (!confidence) return '';
+
+    const indicators = {
+        high: '<span class="confidence-indicator confidence-high" title="High confidence - extracted cleanly">✓</span>',
+        medium: '<span class="confidence-indicator confidence-medium" title="Medium confidence - needs review">⚠</span>',
+        low: '<span class="confidence-indicator confidence-low" title="Low confidence - manual entry recommended">✗</span>'
+    };
+
+    return indicators[confidence] || '';
+}
+
+// Apply confidence indicators to form fields
+function applyConfidenceIndicators(fileType) {
+    const confidence = extractionConfidence[fileType];
+    if (!confidence) return;
+
+    Object.keys(confidence).forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            const indicator = getConfidenceIndicator(fileType, fieldId);
+            if (indicator) {
+                // Add indicator after the field
+                const wrapper = field.closest('.form-group');
+                if (wrapper) {
+                    const existingIndicator = wrapper.querySelector('.confidence-indicator');
+                    if (existingIndicator) existingIndicator.remove();
+
+                    const indicatorEl = document.createElement('span');
+                    indicatorEl.innerHTML = indicator;
+                    wrapper.appendChild(indicatorEl.firstChild);
+                }
+            }
+
+            // Add confidence class to field
+            field.classList.remove('confidence-high', 'confidence-medium', 'confidence-low');
+            field.classList.add(`confidence-${confidence[fieldId]}`);
+        }
+    });
+}
+
 // File upload handlers
 document.addEventListener('DOMContentLoaded', () => {
     setupUploadZones();
@@ -169,25 +263,101 @@ async function processFile(file, type) {
     zoneEl.classList.add('has-file');
 
     try {
+        let aiParsedData = null;
+        let fallbackUsed = false;
+
         if (type === 'om') {
-            extractedData.om = await parseOMPDF(file);
-            statusEl.innerHTML = `<span class="file-name">${file.name}</span><span class="success">✓ Extracted</span>`;
-        } else {
-            const data = await parseExcel(file);
-            if (type === 'rentRoll') {
-                extractedData.rentRoll = parseRentRollData(data);
-            } else {
-                extractedData.t12 = parseT12Data(data);
+            // First, extract text from PDF
+            const pdfText = await extractPDFText(file);
+
+            // Try Claude AI parsing first if enabled
+            if (useAIParsing && pdfText) {
+                statusEl.innerHTML = `<span class="file-name">${file.name}</span><span class="processing">AI analyzing...</span>`;
+                aiParsedData = await parseWithClaude('om', pdfText);
             }
-            statusEl.innerHTML = `<span class="file-name">${file.name}</span><span class="success">✓ Extracted</span>`;
+
+            if (aiParsedData) {
+                // Use AI-parsed data
+                extractedData.om = aiParsedData;
+                statusEl.innerHTML = `<span class="file-name">${file.name}</span><span class="success">✓ AI Extracted</span>`;
+            } else {
+                // Fall back to regex parsing
+                fallbackUsed = true;
+                extractedData.om = await parseOMPDF(file);
+                statusEl.innerHTML = `<span class="file-name">${file.name}</span><span class="success">✓ Extracted</span>`;
+            }
+        } else {
+            // Excel files (rentRoll or t12)
+            const excelData = await parseExcel(file);
+
+            // Convert Excel data to text for AI parsing
+            let textContent = '';
+            Object.values(excelData).forEach(sheet => {
+                sheet.forEach(row => {
+                    textContent += row.filter(cell => cell != null).join('\t') + '\n';
+                });
+            });
+
+            // Try Claude AI parsing first if enabled
+            if (useAIParsing && textContent) {
+                statusEl.innerHTML = `<span class="file-name">${file.name}</span><span class="processing">AI analyzing...</span>`;
+                aiParsedData = await parseWithClaude(type === 'rentRoll' ? 'rentroll' : 't12', textContent);
+            }
+
+            if (aiParsedData) {
+                // Use AI-parsed data
+                if (type === 'rentRoll') {
+                    extractedData.rentRoll = aiParsedData;
+                } else {
+                    extractedData.t12 = aiParsedData;
+                }
+                statusEl.innerHTML = `<span class="file-name">${file.name}</span><span class="success">✓ AI Extracted</span>`;
+            } else {
+                // Fall back to regex parsing
+                fallbackUsed = true;
+                if (type === 'rentRoll') {
+                    extractedData.rentRoll = parseRentRollData(excelData);
+                } else {
+                    extractedData.t12 = parseT12Data(excelData);
+                }
+                statusEl.innerHTML = `<span class="file-name">${file.name}</span><span class="success">✓ Extracted</span>`;
+            }
         }
+
         statusEl.className = 'file-status success';
+
+        // Apply confidence indicators if AI parsing was used
+        if (!fallbackUsed) {
+            applyConfidenceIndicators(type);
+        }
+
         updateProcessButton();
         showExtractedSummary();
     } catch (error) {
         console.error(`Error processing ${type}:`, error);
         statusEl.innerHTML = `<span class="file-name">${file.name}</span><span class="error">Error: ${error.message}</span>`;
         statusEl.className = 'file-status error';
+    }
+}
+
+// Helper function to extract text from PDF
+async function extractPDFText(file) {
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map(item => item.str).join(' ');
+            fullText += pageText + '\n';
+        }
+
+        return fullText;
+    } catch (error) {
+        console.error('Error extracting PDF text:', error);
+        return null;
     }
 }
 
@@ -1266,9 +1436,13 @@ function populateFormFromOM(data) {
     document.getElementById('reservesPerUnit').value = f.reservesPerUnit || '';
 
     // === SECTION 4: Physical Condition ===
-    // Leave these blank if not extracted - user should fill in
-    document.getElementById('recentCapex').value = cleanText(data.recentCapex, 200) || '';
-    document.getElementById('deferredMaintenance').value = cleanText(data.deferredMaintenance, 150) || '';
+    // Set these from AI-extracted data if available
+    if (data.recentCapex) {
+        document.getElementById('recentCapex').value = cleanText(data.recentCapex, 500) || '';
+    }
+    if (data.deferredMaintenance) {
+        document.getElementById('deferredMaintenance').value = cleanText(data.deferredMaintenance, 500) || '';
+    }
     document.getElementById('renovationCostPerUnit').value = data.renovationCostPerUnit || '';
     document.getElementById('unitsToRenovate').value = data.unitsToRenovate || '';
 

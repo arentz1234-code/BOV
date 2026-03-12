@@ -8,24 +8,42 @@ Professional Broker Opinion of Value (BOV) Document Generator for commercial rea
 bov-generator/
 ├── index.html      # Main HTML with form sections and tabs
 ├── app.js          # Core application logic and BOV generation
-├── parser.js       # Document parsing (PDF/Excel) for auto-population
+├── parser.js       # Document parsing (PDF/Excel) + Claude AI integration
 ├── styles.css      # Styling for form and generated BOV document
 ├── server.py       # Simple Python server for local development
+├── api/
+│   └── parse.js    # Vercel serverless function for Claude AI parsing
+├── vercel.json     # Vercel configuration
+├── .env.example    # Environment variables template
 └── CLAUDE.md       # This file
 ```
 
 ## Running the Application
 
+### Local Development
 ```bash
 cd /Users/andrewrentz/bov-generator
 python3 server.py
 # Opens at http://localhost:8000
 ```
 
+### Vercel Deployment
+1. Push to GitHub
+2. Connect to Vercel
+3. Set environment variable: `ANTHROPIC_API_KEY`
+4. Deploy
+
 ## Architecture
+
+### Current: Frontend + Vercel Serverless API
+```
+Browser → Upload Files → Vercel API → Claude AI → Structured Data → Form → Generate HTML/PDF
+```
 
 ### Tabs/Workflow
 1. **Upload Documents** - Upload OM (PDF), Rent Roll (Excel), T12 (Excel) for auto-extraction
+   - Supports AI-powered parsing via Claude API
+   - Falls back to regex parsing if API unavailable
 2. **Edit Data** - Form with 11 sections to input/edit property data
 3. **Preview BOV** - Generated professional BOV document with print/PDF support
 
@@ -42,18 +60,57 @@ python3 server.py
 10. Valuation Parameters
 11. Marketing & Disposition Strategy
 
-### Key Functions (app.js)
+## New Features (v2.0)
 
+### AI-Powered Parsing
+- Claude AI integration via `/api/parse` endpoint
+- Intelligent extraction of property data, financials, and market info
+- Confidence indicators for extracted fields (high/medium/low)
+- Automatic fallback to regex parsing
+
+### UX Improvements
+- **Auto-Save**: Form data saved to localStorage every 30 seconds
+- **Draft Restore**: Prompt to restore previous work on page load
+- **Import/Export JSON**: Save and load form data as JSON files
+- **Field Validation**: Required field highlighting, value warnings
+- **Progress Indicator**: Shows form completion percentage
+
+### Enhanced Document Output
+- **Photo Gallery**: Support for up to 6 property photos
+- **Location Map**: OpenStreetMap integration with property marker
+- **Financial Charts**: Income/expense pie, rent comparison bar, cap rate sensitivity
+- **Direct PDF Export**: Download PDF without print dialog (html2pdf.js)
+- **Custom Branding**: Company logo, broker photo, custom colors
+
+### Financial Analysis Tools
+- **Sensitivity Analysis**: Property value at different cap rates
+- **Pro Forma Projections**: 5-year hold analysis with IRR
+- **Renovation ROI Calculator**: Payback period and value creation
+
+## Key Functions (app.js)
+
+### Core Functions
 - `switchTab(tabId)` - Tab navigation
-- `addUnitRow()` / `removeUnitRow()` - Unit mix management
-- `addCompRow()` / `removeCompRow()` - Comparable sales management
 - `generateBOV()` - Main function that collects form data and generates HTML
 - `calculateFinancials(data)` - Calculates GPR, EGI, NOI, valuations
 - `generateBOVHtml(data, financials)` - Creates the BOV document HTML
-- `loadSampleData()` - Loads demo data (Austin property)
-- `loadAzulData()` - Loads AZUL property from Offering Memorandum
 
-### Financial Calculations
+### New Functions
+- `autoSave()` / `restoreDraft()` - localStorage persistence
+- `exportFormData()` / `importFormData()` - JSON import/export
+- `validateForm()` / `calculateProgress()` - Form validation
+- `downloadPDF()` - Direct PDF generation
+- `createFinancialCharts()` / `initializeCharts()` - Chart.js integration
+- `createLocationMap()` / `initializeMap()` - Leaflet map integration
+- `generateSensitivityTableHtml()` - Cap rate sensitivity table
+- `generateProFormaHtml()` - 5-year projections
+
+### Parser Functions (parser.js)
+- `parseWithClaude(fileType, content)` - AI parsing via API
+- `applyConfidenceIndicators(fileType)` - Show confidence levels
+- `extractPDFText(file)` - PDF text extraction for AI
+
+## Financial Calculations
 
 ```javascript
 // Income
@@ -69,58 +126,43 @@ indicatedValue = NOI / capRate
 pricePerUnit = indicatedValue / numUnits
 ```
 
-### Generated BOV Sections
-1. Cover Page
-2. Executive Summary with value box
-3. Property Description (info tables, unit mix, condition)
-4. Market Analysis (submarket, trends, cap rates)
-5. Comparable Sales Analysis (table with subject comparison)
-6. Income & Valuation Analysis (detailed income statement)
-7. Debt Assumption Analysis (if applicable)
-8. Valuation Conclusion
-9. Marketing & Disposition Strategy
-10. Broker Qualifications & Disclosures
+## Dependencies (CDN)
 
-## Dependencies
+- **PDF.js** - PDF parsing for Offering Memorandum
+- **SheetJS/xlsx** - Excel parsing for Rent Roll and T12
+- **Chart.js** - Financial charts
+- **html2pdf.js** - Direct PDF export
+- **Leaflet.js** - Interactive maps
 
-- **PDF.js** (CDN) - PDF parsing for Offering Memorandum
-- **SheetJS/xlsx** (CDN) - Excel parsing for Rent Roll and T12
+## Environment Variables
 
-## Key Data Points
+```
+ANTHROPIC_API_KEY=sk-ant-api03-...
+```
 
-### Property Object
-```javascript
+Set via Vercel Dashboard > Project > Settings > Environment Variables
+
+## API Endpoints
+
+### POST /api/parse
+Parse document content using Claude AI.
+
+**Request:**
+```json
 {
-  propertyName, propertyAddress, city, state, zipCode, county,
-  propertyType, yearBuilt, yearRenovated, lotSize, buildingSize,
-  numUnits, occupancyRate, constructionType, parking, utilities, zoning,
-  unitMix: [{ type, count, sf, currentRent, marketRent }],
-  otherIncome, vacancyRate, realEstateTaxes, insurance, managementFeePercent,
-  repairsMaintenance, utilitiesExpense, otherExpenses, reservesPerUnit,
-  submarket, msa, msaPopulation, submarketVacancy, rentGrowthYoY,
-  comps: [{ name, date, units, yearBuilt, price, capRate, occupancy, distance }],
-  hasAssumableDebt, loanBalance, interestRate, annualDebtService,
-  brokerName, brokerageFirm, clientName,
-  appliedCapRate, stabilizedCapRate
+  "fileType": "om|rentroll|t12",
+  "content": "document text content"
 }
 ```
 
-### Financials Object
-```javascript
+**Response:**
+```json
 {
-  totalUnits, totalSF, avgCurrentRent, avgMarketRent,
-  gpr, egi, noi, proFormaNoi,
-  totalExpenses, expenseRatio,
-  indicatedValue, proFormaValue, valueLow, valueHigh,
-  pricePerUnit, pricePerUnitLow, pricePerUnitHigh,
-  impliedCapRateLow, impliedCapRateHigh,
-  dscr, ltv
+  "success": true,
+  "data": { /* extracted fields */ },
+  "confidence": { /* field confidence levels */ }
 }
 ```
-
-## Print/PDF
-
-The preview tab has a "Print / Save PDF" button that uses `window.print()`. The styles.css includes `@media print` rules to format the document properly for PDF export.
 
 ## Sample Data
 

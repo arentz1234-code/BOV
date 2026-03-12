@@ -9,6 +9,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <!-- SheetJS for Excel parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Chart.js for financial charts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <!-- html2pdf.js for direct PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Leaflet.js for maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
     <div class="container">
@@ -29,6 +36,37 @@
                 <h2>Upload Your Documents</h2>
                 <p class="section-description">Upload your Offering Memorandum, Rent Roll, and T12 to auto-populate the BOV form. Supported formats: PDF, Excel (.xlsx, .xls)</p>
 
+                <!-- Branding Section -->
+                <div class="branding-section">
+                    <h3>Custom Branding (Optional)</h3>
+                    <div class="branding-grid">
+                        <div class="branding-item">
+                            <label for="companyLogo">Company Logo</label>
+                            <div class="logo-upload-zone" id="logoUploadZone">
+                                <input type="file" id="companyLogo" accept="image/*" hidden>
+                                <img id="logoPreview" style="display:none; max-height:60px;">
+                                <span class="upload-hint">Click to upload logo</span>
+                            </div>
+                        </div>
+                        <div class="branding-item">
+                            <label for="brokerPhoto">Broker Photo</label>
+                            <div class="logo-upload-zone" id="brokerPhotoZone">
+                                <input type="file" id="brokerPhotoFile" accept="image/*" hidden>
+                                <img id="brokerPhotoPreview" style="display:none; max-height:60px; border-radius:50%;">
+                                <span class="upload-hint">Click to upload photo</span>
+                            </div>
+                        </div>
+                        <div class="branding-item">
+                            <label for="primaryColor">Primary Color</label>
+                            <input type="color" id="primaryColor" value="#1a365d">
+                        </div>
+                        <div class="branding-item">
+                            <label for="accentColor">Accent Color</label>
+                            <input type="color" id="accentColor" value="#c9a227">
+                        </div>
+                    </div>
+                </div>
+
                 <div class="upload-grid">
                     <div class="upload-zone" id="photoUploadZone">
                         <div class="upload-icon">
@@ -38,10 +76,11 @@
                                 <polyline points="21 15 16 10 5 21"></polyline>
                             </svg>
                         </div>
-                        <h3>Property Photo</h3>
-                        <p>Drop image here or click to browse</p>
-                        <input type="file" id="photoFile" accept="image/*" hidden>
+                        <h3>Property Photos</h3>
+                        <p>Drop images here or click (up to 6 photos)</p>
+                        <input type="file" id="photoFile" accept="image/*" multiple hidden>
                         <div class="file-status" id="photoStatus"></div>
+                        <div class="photo-gallery" id="photoGallery"></div>
                         <img id="photoPreview" style="display:none; max-width:100%; margin-top:15px; border-radius:8px;">
                     </div>
 
@@ -120,8 +159,10 @@
                 </div>
 
                 <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="clearAllData()">Clear All Data</button>
                     <button type="button" class="btn-secondary" onclick="loadSampleData()">Load Sample Data</button>
                     <button type="button" class="btn-secondary" onclick="loadAzulData()">Load AZUL Data</button>
+                    <button type="button" class="btn-secondary" onclick="importFormData()">Import JSON</button>
                     <button type="button" class="btn-primary" id="processBtn" onclick="processDocuments()" disabled>Process Documents</button>
                     <button type="button" class="btn-primary" onclick="switchTab('input')">Review & Edit Data</button>
                 </div>
@@ -313,19 +354,19 @@
                     <h2>Physical Condition & Capital Needs</h2>
                     <div class="form-group full-width">
                         <label for="recentCapex">Recent Capital Expenditures</label>
-                        <textarea id="recentCapex" rows="3" placeholder="e.g., New roof installed 2022 ($150,000), HVAC units replaced in 12 units (2021)"></textarea>
+                        <textarea id="recentCapex" rows="3"></textarea>
                     </div>
                     <div class="form-group full-width">
                         <label for="deferredMaintenance">Deferred Maintenance / Capital Needs</label>
-                        <textarea id="deferredMaintenance" rows="3" placeholder="e.g., Parking lot needs resurfacing (est. $45,000), 8 units need interior renovation"></textarea>
+                        <textarea id="deferredMaintenance" rows="3"></textarea>
                     </div>
                     <div class="form-group">
                         <label for="renovationCostPerUnit">Estimated Renovation Cost ($/unit)</label>
-                        <input type="number" id="renovationCostPerUnit" placeholder="8500">
+                        <input type="number" id="renovationCostPerUnit">
                     </div>
                     <div class="form-group">
                         <label for="unitsToRenovate">Units Requiring Renovation</label>
-                        <input type="number" id="unitsToRenovate" placeholder="24">
+                        <input type="number" id="unitsToRenovate">
                     </div>
                 </section>
 
@@ -347,7 +388,7 @@
                         </div>
                         <div class="form-group">
                             <label for="populationGrowth">Population Growth (% YoY)</label>
-                            <input type="number" id="populationGrowth" step="0.1" placeholder="2.8">
+                            <input type="number" id="populationGrowth" step="0.1" value="2.8">
                         </div>
                         <div class="form-group">
                             <label for="majorEmployers">Major Employers</label>
@@ -355,15 +396,15 @@
                         </div>
                         <div class="form-group">
                             <label for="submarketVacancy">Submarket Vacancy Rate (%)</label>
-                            <input type="number" id="submarketVacancy" step="0.1" placeholder="5.2">
+                            <input type="number" id="submarketVacancy" step="0.1" value="5.2">
                         </div>
                         <div class="form-group">
                             <label for="rentGrowthYoY">Rent Growth (% YoY)</label>
-                            <input type="number" id="rentGrowthYoY" step="0.1" placeholder="3.5">
+                            <input type="number" id="rentGrowthYoY" step="0.1" value="3.5">
                         </div>
                         <div class="form-group">
                             <label for="newSupply">New Supply Pipeline (units within 3 mi)</label>
-                            <input type="number" id="newSupply" placeholder="850">
+                            <input type="number" id="newSupply" value="850">
                         </div>
                         <div class="form-group">
                             <label for="avgHouseholdIncome">Avg Household Income</label>
@@ -371,11 +412,11 @@
                         </div>
                         <div class="form-group">
                             <label for="marketCapRateLow">Market Cap Rate - Low (%)</label>
-                            <input type="number" id="marketCapRateLow" step="0.01" placeholder="5.25">
+                            <input type="number" id="marketCapRateLow" step="0.01" value="5.25">
                         </div>
                         <div class="form-group">
                             <label for="marketCapRateHigh">Market Cap Rate - High (%)</label>
-                            <input type="number" id="marketCapRateHigh" step="0.01" placeholder="5.75">
+                            <input type="number" id="marketCapRateHigh" step="0.01" value="5.75">
                         </div>
                     </div>
                 </section>
@@ -399,13 +440,14 @@
                             <div class="comp-header">Comparable #1</div>
                             <div class="comp-grid">
                                 <input type="text" placeholder="Property Name" class="compName">
-                                <input type="month" placeholder="Sale Date" class="compDate">
+                                <input type="text" placeholder="YYYY-MM" class="compDate">
                                 <input type="number" placeholder="Units" class="compUnits">
                                 <input type="number" placeholder="Year" class="compYearBuilt">
                                 <input type="text" placeholder="$0" class="compPrice" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
                                 <input type="number" placeholder="0.00" step="0.01" class="compCapRate">
                                 <input type="number" placeholder="%" class="compOccupancy">
                                 <input type="number" placeholder="mi" step="0.1" class="compDistance">
+                                <span></span>
                             </div>
                         </div>
                     </div>
@@ -441,6 +483,7 @@
                                 <input type="text" placeholder="$0" class="rentCompAvgRent" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
                                 <input type="number" placeholder="$/SF" step="0.01" class="rentCompPSF">
                                 <input type="number" placeholder="mi" step="0.1" class="rentCompDistance">
+                                <span></span>
                             </div>
                         </div>
                     </div>
@@ -590,6 +633,7 @@
 
                 <div class="form-actions">
                     <button type="button" class="btn-secondary" onclick="switchTab('upload')">Back to Upload</button>
+                    <button type="button" class="btn-secondary" onclick="exportFormData()">Export JSON</button>
                     <button type="button" class="btn-primary" onclick="generateBOV()">Generate BOV</button>
                 </div>
             </form>
@@ -598,7 +642,8 @@
         <!-- Preview Tab -->
         <div id="preview" class="tab-content">
             <div class="preview-actions">
-                <button onclick="window.print()" class="btn-primary">Print / Save PDF</button>
+                <button onclick="downloadPDF()" class="btn-primary">Download PDF</button>
+                <button onclick="window.print()" class="btn-secondary">Print</button>
                 <button onclick="switchTab('input')" class="btn-secondary">Edit Data</button>
             </div>
             <div id="bov-output" class="bov-document">
