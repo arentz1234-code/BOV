@@ -518,7 +518,19 @@ function getRentCompsData() {
 }
 
 // Generate BOV Document
-function generateBOV() {
+async function generateBOV() {
+    // Show loading state
+    const previewOutput = document.getElementById('bov-output');
+    previewOutput.innerHTML = '<div class="loading-bov"><p>Generating BOV with AI analysis...</p><div class="spinner"></div></div>';
+    switchTab('preview');
+
+    // Run AI analysis to fill in missing data and generate insights
+    try {
+        await runAIEnhancements();
+    } catch (e) {
+        console.log('AI enhancement skipped:', e.message);
+    }
+
     // Collect all data
     const data = {
         // Property Info
@@ -1100,9 +1112,44 @@ function generateBOVHtml(data, fin) {
             <ul>${data.keySellingPoints.map(p => `<li>${p}</li>`).join('')}</ul>` : ''}
         </section>
 
+        <!-- RISK ASSESSMENT (AI Generated) -->
+        ${window.aiRiskAssessment ? `
+        <section>
+            <h2>Section 9: Investment Considerations & Risk Assessment</h2>
+            <p><em>AI-generated analysis based on property characteristics and market conditions.</em></p>
+
+            <p><strong>Overall Risk Rating:</strong> ${window.aiRiskAssessment.overallRiskRating || 'Moderate'}</p>
+            ${window.aiRiskAssessment.riskSummary ? `<p>${window.aiRiskAssessment.riskSummary}</p>` : ''}
+
+            ${window.aiRiskAssessment.physicalRisks && window.aiRiskAssessment.physicalRisks.length > 0 ? `
+            <h3>Physical/Property Risks</h3>
+            <ul>
+                ${window.aiRiskAssessment.physicalRisks.map(r => `<li><strong>${r.risk}</strong> (${r.severity}) - ${r.mitigation}</li>`).join('')}
+            </ul>` : ''}
+
+            ${window.aiRiskAssessment.marketRisks && window.aiRiskAssessment.marketRisks.length > 0 ? `
+            <h3>Market Risks</h3>
+            <ul>
+                ${window.aiRiskAssessment.marketRisks.map(r => `<li><strong>${r.risk}</strong> (${r.severity}) - ${r.mitigation}</li>`).join('')}
+            </ul>` : ''}
+
+            ${window.aiRiskAssessment.financialRisks && window.aiRiskAssessment.financialRisks.length > 0 ? `
+            <h3>Financial Risks</h3>
+            <ul>
+                ${window.aiRiskAssessment.financialRisks.map(r => `<li><strong>${r.risk}</strong> (${r.severity}) - ${r.mitigation}</li>`).join('')}
+            </ul>` : ''}
+
+            ${window.aiRiskAssessment.keyDueDiligenceItems && window.aiRiskAssessment.keyDueDiligenceItems.length > 0 ? `
+            <h3>Recommended Due Diligence</h3>
+            <ul>
+                ${window.aiRiskAssessment.keyDueDiligenceItems.map(item => `<li>${item}</li>`).join('')}
+            </ul>` : ''}
+        </section>
+        ` : ''}
+
         <!-- BROKER QUALIFICATIONS -->
         <section>
-            <h2>Section 9: Broker Qualifications & Disclosures</h2>
+            <h2>Section ${window.aiRiskAssessment ? '10' : '9'}: Broker Qualifications & Disclosures</h2>
 
             ${(data.brokerName || data.brokerLicense || data.brokerageFirm || data.brokerageAddress || data.brokerBio) ? `
             <h3>Broker Qualifications</h3>
@@ -2901,6 +2948,112 @@ async function runAIAnalysis() {
             statusEl.innerHTML = `<span class="error">Analysis error: ${error.message}</span>`;
         }
     }
+}
+
+// Run AI enhancements automatically during BOV generation
+async function runAIEnhancements() {
+    const formData = collectAllFormData();
+    const financials = calculateFinancialsForAnalysis(formData);
+    const propertyData = { ...formData, ...financials };
+
+    // Check what's missing and run appropriate analyses
+    const promises = [];
+
+    // If missing market data, run market research
+    if (!formData.msaPopulation || !formData.majorEmployers) {
+        promises.push(
+            runSpecificAnalysis('market_research').then(analysis => {
+                if (analysis.msaPopulation && !formData.msaPopulation) {
+                    document.getElementById('msaPopulation').value = analysis.msaPopulation;
+                }
+                if (analysis.majorEmployers && !formData.majorEmployers) {
+                    document.getElementById('majorEmployers').value = analysis.majorEmployers;
+                }
+                if (analysis.submarketVacancy && !formData.submarketVacancy) {
+                    document.getElementById('submarketVacancy').value = analysis.submarketVacancy;
+                }
+                if (analysis.rentGrowthYoY && !formData.rentGrowthYoY) {
+                    document.getElementById('rentGrowthYoY').value = analysis.rentGrowthYoY;
+                }
+            }).catch(e => console.log('Market research skipped:', e.message))
+        );
+    }
+
+    // If missing cap rate, run valuation analysis
+    if (!formData.appliedCapRate) {
+        promises.push(
+            runSpecificAnalysis('valuation_recommendation').then(analysis => {
+                if (analysis.recommendedCapRateLow && analysis.recommendedCapRateHigh) {
+                    const avgCap = (analysis.recommendedCapRateLow + analysis.recommendedCapRateHigh) / 2;
+                    document.getElementById('appliedCapRate').value = avgCap.toFixed(2);
+                    document.getElementById('marketCapRateLow').value = analysis.recommendedCapRateLow;
+                    document.getElementById('marketCapRateHigh').value = analysis.recommendedCapRateHigh;
+                }
+                window.aiValuationAnalysis = analysis;
+            }).catch(e => console.log('Valuation analysis skipped:', e.message))
+        );
+    }
+
+    // If missing key selling points, generate marketing copy
+    if (!formData.keySellingPoints || formData.keySellingPoints.length === 0) {
+        promises.push(
+            runSpecificAnalysis('marketing_copy').then(analysis => {
+                if (analysis.keySellingPoints) {
+                    document.getElementById('keySellingPoints').value = analysis.keySellingPoints;
+                }
+                if (analysis.targetBuyerProfile && !formData.targetBuyer) {
+                    document.getElementById('targetBuyer').value = analysis.targetBuyerProfile;
+                }
+                window.aiMarketingCopy = analysis;
+            }).catch(e => console.log('Marketing copy skipped:', e.message))
+        );
+    }
+
+    // Always run risk assessment for the BOV
+    promises.push(
+        runSpecificAnalysis('risk_assessment').then(analysis => {
+            window.aiRiskAssessment = analysis;
+        }).catch(e => console.log('Risk assessment skipped:', e.message))
+    );
+
+    // If no comps, find them
+    const compRows = document.querySelectorAll('#compsContainer .comp-row');
+    const hasComps = compRows.length > 0 && document.querySelector('.compName')?.value;
+    if (!hasComps) {
+        promises.push(
+            runSpecificAnalysis('find_comps').then(analysis => {
+                if (analysis.comparableSales && analysis.comparableSales.length > 0) {
+                    const compContainer = document.getElementById('compsContainer');
+                    compContainer.innerHTML = '';
+                    compCount = 0;
+                    analysis.comparableSales.forEach((comp, i) => {
+                        compCount++;
+                        const row = document.createElement('div');
+                        row.className = 'comp-row';
+                        const priceFormatted = '$' + (comp.salePrice || 0).toLocaleString();
+                        row.innerHTML = `
+                            <div class="comp-header">Comparable #${i + 1}</div>
+                            <div class="comp-grid">
+                                <input type="text" class="compName" value="${comp.name || ''}">
+                                <input type="text" class="compDate" value="${comp.saleDate || ''}" placeholder="YYYY-MM">
+                                <input type="number" class="compUnits" value="${comp.units || ''}">
+                                <input type="number" class="compYearBuilt" value="${comp.yearBuilt || ''}">
+                                <input type="text" class="compPrice" value="${priceFormatted}" oninput="formatCurrency(this)" onblur="formatCurrency(this)">
+                                <input type="number" class="compCapRate" step="0.01" value="${comp.capRate || ''}">
+                                <input type="number" class="compOccupancy" value="${comp.occupancy || ''}">
+                                <input type="number" class="compDistance" step="0.1" value="${comp.distance || ''}">
+                                <span></span>
+                            </div>
+                        `;
+                        compContainer.appendChild(row);
+                    });
+                }
+            }).catch(e => console.log('Find comps skipped:', e.message))
+        );
+    }
+
+    // Wait for all analyses to complete
+    await Promise.all(promises);
 }
 
 // Run specific analysis type
