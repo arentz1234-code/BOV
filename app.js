@@ -1626,13 +1626,27 @@ Named "America's Happiest Seaside Town" (Coastal Living Magazine, 2023)`;
 
 const AUTO_SAVE_KEY = 'bovDraft';
 const AUTO_SAVE_INTERVAL = 30000; // 30 seconds
+const DATA_VERSION = 2; // Increment this to clear old localStorage data
 let autoSaveTimer = null;
 
 // Initialize auto-save on page load
 document.addEventListener('DOMContentLoaded', () => {
+    // Clear old data if version mismatch
+    clearOldData();
     initAutoSave();
     checkForSavedDraft();
 });
+
+// Clear localStorage if data version is old
+function clearOldData() {
+    const savedVersion = localStorage.getItem('bovDataVersion');
+    if (savedVersion !== String(DATA_VERSION)) {
+        localStorage.removeItem(AUTO_SAVE_KEY);
+        localStorage.removeItem('savedBOVs');
+        localStorage.setItem('bovDataVersion', DATA_VERSION);
+        console.log('Cleared old localStorage data (version upgrade)');
+    }
+}
 
 function initAutoSave() {
     // Auto-save every 30 seconds
@@ -1968,16 +1982,14 @@ function populateFormFromData(data) {
         setFieldValue('annualDebtService', data.annualDebtService);
     }
 
-    // Seller & Broker
+    // Seller Goals (restore these)
     setFieldValue('sellerTimeline', data.sellerTimeline);
     setFieldValue('pricingExpectation', data.pricingExpectation);
     setFieldValue('dealStructure', data.dealStructure);
-    setFieldValue('brokerName', data.brokerName);
-    setFieldValue('brokerLicense', data.brokerLicense);
-    setFieldValue('brokerageFirm', data.brokerageFirm);
-    setFieldValue('brokerageAddress', data.brokerageAddress);
-    setFieldValue('clientName', data.clientName);
-    setFieldValue('brokerBio', data.brokerBio);
+
+    // Broker Info - DO NOT restore from saved data
+    // These should always be entered fresh by the user
+    // (The user's info, not data from source documents)
 
     // Valuation
     setFieldValue('appliedCapRate', data.appliedCapRate);
