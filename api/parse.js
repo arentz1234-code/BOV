@@ -99,7 +99,18 @@ module.exports = async (req, res) => {
 function getPromptForFileType(fileType, content) {
     const baseInstructions = `You are an expert commercial real estate analyst. Extract structured data from the following document content. Return ONLY valid JSON with no additional text.
 
-For each extracted field, provide a confidence level: "high" (clearly stated in document), "medium" (inferred from context), or "low" (uncertain/guessed).`;
+EXTRACTION PRIORITY:
+1. First, look for explicitly stated values in the document
+2. If not explicitly stated, infer from context (e.g., year built 2019 = likely no deferred maintenance)
+3. If cannot be determined, use null for numbers or empty string for text fields
+
+For each extracted field, provide a confidence level: "high" (clearly stated in document), "medium" (inferred from context), or "low" (uncertain/guessed).
+
+CAPITAL NEEDS EXTRACTION - Pay special attention to:
+- Recent Capital Expenditures: Look for "capital improvements", "recent upgrades", "value-add", "renovations completed", "property enhancements"
+- Deferred Maintenance: Look for "capital needs", "deferred maintenance", "required repairs", "near-term capex"
+- For newer properties (built within 5 years), note "Property built [year] - no significant deferred maintenance expected"
+- Property amenities and unit features help assess condition`;
 
     if (fileType === 'om') {
         return `${baseInstructions}
@@ -185,10 +196,13 @@ Extract the following information and return as JSON:
     "brokerName": "string",
     "brokerageFirm": "string",
     "brokerLicense": "string",
-    "recentCapex": "string (description of recent capital improvements)",
-    "deferredMaintenance": "string (description of deferred maintenance or capital needs)",
-    "renovationCostPerUnit": "number",
-    "unitsToRenovate": "number"
+    "recentCapex": "string (detailed description of recent capital improvements, renovations, upgrades - look for sections about property improvements, capital expenditures, value-add completed, recent upgrades, amenity additions)",
+    "deferredMaintenance": "string (description of deferred maintenance, capital needs, required repairs, or note 'None identified' for newer properties in good condition)",
+    "renovationCostPerUnit": "number (estimated cost per unit for renovations if mentioned, or null)",
+    "unitsToRenovate": "number (number of units needing renovation, or 0 if property is fully renovated/new)",
+    "propertyCondition": "string (overall condition: Excellent, Good, Fair, Poor - infer from year built, recent capex, and property description)",
+    "amenities": "string (list of property amenities: pool, fitness center, clubhouse, etc.)",
+    "unitFeatures": "string (in-unit features: granite counters, stainless appliances, washer/dryer, etc.)"
   },
   "confidence": {
     "propertyName": "high|medium|low",
@@ -196,6 +210,7 @@ Extract the following information and return as JSON:
     "numUnits": "high|medium|low",
     "yearBuilt": "high|medium|low",
     "unitMix": "high|medium|low",
+    "capitalNeeds": "high|medium|low",
     "financials": "high|medium|low",
     "comps": "high|medium|low"
   }
