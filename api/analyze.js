@@ -288,7 +288,15 @@ ${propertyContext}
 
 Based on the subject property's location, size, age, and class, suggest 4-6 comparable sales that would be relevant for valuation. Use your knowledge of recent multifamily transactions in the Florida Treasure Coast / South Florida market and similar secondary markets.
 
-For each comp, provide realistic data based on typical transactions for this market. If you know of actual transactions, use those. Otherwise, create plausible examples based on market norms.
+IMPORTANT: You MUST provide complete data for EVERY field. Do not leave any field empty, null, or zero.
+- saleDate: Always provide a realistic date (YYYY-MM format)
+- yearBuilt: Always provide the year built (estimate if needed based on property age)
+- capRate: Always provide a realistic cap rate (typically 4.0-6.5% for Florida multifamily)
+- occupancy: Always provide occupancy at time of sale (typically 90-98%)
+- distance: Always estimate distance from subject property in miles
+- pricePerUnit: Calculate from salePrice / units
+
+For each comp, provide realistic data based on typical transactions for this market. If you know of actual transactions, use those. Otherwise, create plausible examples based on market norms. Never return 0 or empty values.
 
 Return ONLY valid JSON:
 
@@ -322,6 +330,16 @@ Return ONLY valid JSON:
 ${propertyContext}
 
 Based on the subject property's location, size, age, and class, suggest 4-6 rent comparable properties that would be relevant for rent analysis. Use your knowledge of multifamily properties in the Florida Treasure Coast / South Florida market and similar secondary markets.
+
+IMPORTANT: You MUST provide complete data for EVERY field. Do not leave any field empty, null, or zero.
+- units: Total number of units (realistic for market)
+- yearBuilt: Year the property was built
+- occupancy: Current occupancy percentage (typically 90-98%)
+- avgRent: Average monthly rent in dollars (realistic for market/class)
+- rentPSF: Rent per square foot (typically $1.50-$2.50 for FL multifamily)
+- distance: Distance from subject property in miles
+
+Never return 0 or empty values. Provide realistic estimates based on market knowledge.
 
 Return ONLY valid JSON:
 

@@ -110,7 +110,14 @@ CAPITAL NEEDS EXTRACTION - Pay special attention to:
 - Recent Capital Expenditures: Look for "capital improvements", "recent upgrades", "value-add", "renovations completed", "property enhancements"
 - Deferred Maintenance: Look for "capital needs", "deferred maintenance", "required repairs", "near-term capex"
 - For newer properties (built within 5 years), note "Property built [year] - no significant deferred maintenance expected"
-- Property amenities and unit features help assess condition`;
+- Property amenities and unit features help assess condition
+
+COMPARABLE SALES EXTRACTION - Extract ALL comp data with complete information:
+- Look for "comparable sales", "recent transactions", "market comparables", "sales comps" sections
+- For EACH comp, extract ALL fields: name, date, units, yearBuilt, price, capRate, occupancy, distance
+- If a field is not explicitly stated, estimate it based on context (e.g., cap rate from price/NOI, distance from location)
+- Never return 0.00 or empty for cap rate or occupancy - these should always have values
+- Look for tables with comp data and extract every column`;
 
     if (fileType === 'om') {
         return `${baseInstructions}
