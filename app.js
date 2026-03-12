@@ -1329,18 +1329,19 @@ Average occupancy across the competitive set is 95%, supporting the subject's cu
     document.getElementById('hasAssumableDebt').checked = false;
     toggleDebtSection();
 
-    // Seller & Broker (Listing info from Marcus & Millichap OM Pages 3, 54)
+    // Seller Goals (from OM listing info)
     document.getElementById('sellerTimeline').value = 'Market-bid basis with flexible timing; seller will respond to offers as received';
     document.getElementById('pricingExpectation').value = 'TBD by Market - Offers solicited on market-bid basis';
     document.getElementById('dealStructure').value = 'Fee simple interest subject to land lease with City of Stuart; offered free and clear of debt';
-    document.getElementById('brokerName').value = 'Ned Roberts, CCIM & Jason Hague';
-    document.getElementById('brokerLicense').value = 'FL SL3146498 & FL SL3421498';
-    document.getElementById('brokerageFirm').value = 'Marcus & Millichap';
-    document.getElementById('brokerageAddress').value = '201 N Franklin St, Suite 1100, Tampa, FL 33602';
-    document.getElementById('clientName').value = 'AZUL Stuart, LLC';
-    document.getElementById('brokerBio').value = `Ned Roberts, CCIM - Senior Vice President Investments, National Multi Housing Group. Specializes in multifamily investment sales throughout Florida with over $1B in career transactions.
 
-Jason Hague - Senior Associate, National Multi Housing Group. Focused on Florida multifamily markets with expertise in Class A garden-style and mid-rise communities.`;
+    // Broker Info - Leave blank for user to fill in their own info
+    // "Prepared by" on the BOV should be YOUR info, not the seller's broker
+    document.getElementById('brokerName').value = '';
+    document.getElementById('brokerLicense').value = '';
+    document.getElementById('brokerageFirm').value = '';
+    document.getElementById('brokerageAddress').value = '';
+    document.getElementById('clientName').value = '';
+    document.getElementById('brokerBio').value = '';
 
     // Valuation - based on Actual T12 NOI of $794,404 (GPR $1,540,760, OpEx $760,399)
     document.getElementById('appliedCapRate').value = '5.50';

@@ -1483,18 +1483,21 @@ function populateFormFromOM(data) {
     }
 
     // === SECTION 9: Seller & Broker Info ===
-    // Extract from document if available
+    // Extract seller goals from document
     document.getElementById('sellerTimeline').value = cleanText(data.sellerTimeline, 200) || '';
     document.getElementById('pricingExpectation').value = cleanText(data.pricingExpectation, 200) || '';
     document.getElementById('dealStructure').value = cleanText(data.dealStructure, 200) || '';
 
-    // Broker info - extract from OM document
-    document.getElementById('brokerName').value = cleanText(data.brokerName, 100) || '';
-    document.getElementById('brokerLicense').value = cleanText(data.brokerLicense, 50) || '';
-    document.getElementById('brokerageFirm').value = cleanText(data.brokerageFirm, 100) || '';
-    document.getElementById('brokerageAddress').value = cleanText(data.brokerageAddress, 200) || '';
-    document.getElementById('clientName').value = cleanText(data.clientName, 100) || '';
-    document.getElementById('brokerBio').value = cleanText(data.brokerBio, 500) || '';
+    // Broker info - DO NOT extract from document
+    // The broker info in the OM is the SELLER's broker
+    // "Prepared by" on the BOV should be YOUR info (the person creating the BOV)
+    // Leave these blank for user to fill in
+    document.getElementById('brokerName').value = '';
+    document.getElementById('brokerLicense').value = '';
+    document.getElementById('brokerageFirm').value = '';
+    document.getElementById('brokerageAddress').value = '';
+    document.getElementById('clientName').value = '';
+    document.getElementById('brokerBio').value = '';
 
     // === SECTION 10: Valuation Parameters ===
     // Leave blank for user to fill in
