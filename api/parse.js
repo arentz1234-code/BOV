@@ -3,7 +3,7 @@
 // Request: { fileType: 'om'|'rentroll'|'t12', content: string (text content) }
 // Response: { success: true, data: { ...extractedFields }, confidence: { ...fieldConfidences } }
 
-module.exports = async function handler(req, res) {
+module.exports = async (req, res) => {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
